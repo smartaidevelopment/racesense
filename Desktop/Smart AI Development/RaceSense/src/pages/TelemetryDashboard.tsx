@@ -672,8 +672,10 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
   };
 
   showOBDConnectionDialog = () => {
+    console.log('[DEBUG] showOBDConnectionDialog called');
     this.lastActiveElement = document.activeElement as HTMLElement;
     this.setState({ showOBDConnectionDialog: true }, () => {
+      console.log('[DEBUG] showOBDConnectionDialog: state updated to true');
       setTimeout(() => {
         if (this.modalRef.current) {
           const focusable = this.modalRef.current.querySelectorAll<HTMLElement>(
@@ -686,6 +688,7 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
   };
 
   dismissOBDDialog = () => {
+    console.log('[DEBUG] dismissOBDDialog called');
     if (this.bluetoothAbortController) this.bluetoothAbortController.abort();
     if (this.serialAbortController) this.serialAbortController.abort();
     this.setState({ showOBDConnectionDialog: false, isConnecting: false });
@@ -721,6 +724,200 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
   };
 
   render() {
+    if (this.state.showOBDConnectionDialog) {
+      // Render only the OBD-II Connection Dialog as a modal overlay
+      const bluetoothSupported = this.getBluetoothSupport();
+      const serialSupported = this.getSerialSupport();
+      return (
+        <div>
+          {/* OBD-II Connection Dialog */}
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="obd-dialog-title"
+            ref={this.modalRef}
+          >
+            <Card className="max-w-2xl w-full p-6 border-racing-blue/30">
+              <div className="space-y-6">
+                <div className="text-center">
+                  <div className="flex justify-center mb-4">
+                    <Car className="h-12 w-12 text-racing-blue" />
+                  </div>
+                  <h3 id="obd-dialog-title" className="font-bold text-xl mb-2">
+                    Connect Vehicle Telemetry
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Connect your vehicle's OBD-II port for real engine telemetry data
+                  </p>
+                </div>
+                {/* Browser support warnings */}
+                {(!bluetoothSupported || !serialSupported) && (
+                  <div className="p-2 bg-yellow-100 border border-yellow-300 rounded text-yellow-800 text-sm text-center mb-2">
+                    { !bluetoothSupported && <div>⚠️ Web Bluetooth is not supported in this browser.</div> }
+                    { !serialSupported && <div>⚠️ Web Serial is not supported in this browser.</div> }
+                    <div>Try Chrome or Edge on desktop for best compatibility.</div>
+                  </div>
+                )}
+                {this.state.connectError && (
+                  <div className="p-2 bg-racing-red/10 border border-racing-red/30 rounded text-racing-red text-sm text-center mb-2">
+                    {this.state.connectError}
+                    <div className="mt-2">
+                      <RacingButton
+                        variant="outline"
+                        onClick={this.state.isConnecting ? undefined : () => {
+                          if (this.state.connectError?.includes('Bluetooth')) this.connectOBDBluetooth();
+                          else if (this.state.connectError?.includes('Serial')) this.connectOBDSerial();
+                        }}
+                        disabled={this.state.isConnecting}
+                      >
+                        Retry
+                      </RacingButton>
+                    </div>
+                  </div>
+                )}
+                {this.state.obdConnected && !this.state.isConnecting && (
+                  <div className="flex flex-col items-center gap-2 mb-2">
+                    <div className="h-8 w-8 rounded-full bg-racing-green flex items-center justify-center">
+                      <CheckCircle className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-racing-green font-medium">OBD-II Connected!</span>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Bluetooth Connection */}
+                  <Card
+                    className={`p-4 border-racing-blue/20 hover:border-racing-blue/40 transition-colors cursor-pointer ${this.state.isConnecting ? 'opacity-50 pointer-events-none' : ''}`}
+                    onClick={this.connectOBDBluetooth}
+                  >
+                    <div className="text-center space-y-3">
+                      <div className="flex justify-center">
+                        <Bluetooth className="h-8 w-8 text-racing-blue" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-racing-blue">
+                          Bluetooth OBD
+                        </h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          ELM327 Bluetooth adapter
+                        </p>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <div>✓ Wireless connection</div>
+                        <div>✓ Most common adapter</div>
+                        <div>✓ Works with phones/tablets</div>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* USB/Serial Connection */}
+                  <Card
+                    className={`p-4 border-racing-green/20 hover:border-racing-green/40 transition-colors cursor-pointer ${this.state.isConnecting ? 'opacity-50 pointer-events-none' : ''}`}
+                    onClick={this.connectOBDSerial}
+                  >
+                    <div className="text-center space-y-3">
+                      <div className="flex justify-center">
+                        <Usb className="h-8 w-8 text-racing-green" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-racing-green">
+                          USB OBD
+                        </h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          USB/Serial OBD adapter
+                        </p>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <div>✓ Stable connection</div>
+                        <div>✓ Faster data rates</div>
+                        <div>✓ No pairing required</div>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+
+                {/* What you'll get */}
+                <div className="bg-muted/20 rounded-lg p-4">
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-racing-blue" />
+                    Real Vehicle Telemetry Data
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-racing-green rounded-full" />
+                      <span>Engine RPM</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-racing-blue rounded-full" />
+                      <span>Vehicle Speed</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-racing-red rounded-full" />
+                      <span>Coolant Temperature</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-racing-yellow rounded-full" />
+                      <span>Throttle Position</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-racing-purple rounded-full" />
+                      <span>Engine Load</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-racing-orange rounded-full" />
+                      <span>Fuel Level</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-racing-cyan rounded-full" />
+                      <span>Air Flow Rate</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-racing-pink rounded-full" />
+                      <span>Manifold Pressure</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Requirements */}
+                <details className="text-sm">
+                  <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                    Hardware Requirements ▼
+                  </summary>
+                  <div className="mt-3 p-3 bg-muted/10 rounded-lg text-xs text-muted-foreground space-y-2">
+                    <div>
+                      <strong>For Bluetooth:</strong> ELM327 Bluetooth OBD-II
+                      adapter (~$10-30)
+                    </div>
+                    <div>
+                      <strong>For USB:</strong> ELM327 USB OBD-II adapter
+                      (~$15-40)
+                    </div>
+                    <div>
+                      <strong>Vehicle:</strong> Most cars 1996+ (OBD-II
+                      compatible)
+                    </div>
+                    <div>
+                      <strong>Browser:</strong> Chrome/Edge (Web
+                      Bluetooth/Serial API support)
+                    </div>
+                  </div>
+                </details>
+
+                <div className="flex justify-center">
+                  <RacingButton
+                    variant="outline"
+                    onClick={this.dismissOBDDialog}
+                    className="px-8"
+                  >
+                    Cancel
+                  </RacingButton>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      );
+    }
     const {
       isLive,
       telemetryData,
@@ -759,7 +956,7 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
             <RacingButton
               variant="racing"
               racing="blue"
-              onClick={this.showOBDConnectionDialog}
+              onClick={() => { console.log('[DEBUG] Connect Vehicle button clicked'); this.showOBDConnectionDialog(); }}
             >
               Connect Vehicle
             </RacingButton>
@@ -1595,194 +1792,6 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
                     </div>
                   </div>
                 </details>
-              </div>
-            </Card>
-          </div>
-        )}
-
-        {/* OBD-II Connection Dialog */}
-        {showOBDConnectionDialog && (
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="obd-dialog-title"
-            ref={this.modalRef}
-          >
-            <Card className="max-w-2xl w-full p-6 border-racing-blue/30">
-              <div className="space-y-6">
-                <div className="text-center">
-                  <div className="flex justify-center mb-4">
-                    <Car className="h-12 w-12 text-racing-blue" />
-                  </div>
-                  <h3 id="obd-dialog-title" className="font-bold text-xl mb-2">
-                    Connect Vehicle Telemetry
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Connect your vehicle's OBD-II port for real engine telemetry data
-                  </p>
-                </div>
-                {/* Browser support warnings */}
-                {(!bluetoothSupported || !serialSupported) && (
-                  <div className="p-2 bg-yellow-100 border border-yellow-300 rounded text-yellow-800 text-sm text-center mb-2">
-                    { !bluetoothSupported && <div>⚠️ Web Bluetooth is not supported in this browser.</div> }
-                    { !serialSupported && <div>⚠️ Web Serial is not supported in this browser.</div> }
-                    <div>Try Chrome or Edge on desktop for best compatibility.</div>
-                  </div>
-                )}
-                {this.state.connectError && (
-                  <div className="p-2 bg-racing-red/10 border border-racing-red/30 rounded text-racing-red text-sm text-center mb-2">
-                    {this.state.connectError}
-                    <div className="mt-2">
-                      <RacingButton
-                        variant="outline"
-                        onClick={this.state.isConnecting ? undefined : () => {
-                          if (this.state.connectError?.includes('Bluetooth')) this.connectOBDBluetooth();
-                          else if (this.state.connectError?.includes('Serial')) this.connectOBDSerial();
-                        }}
-                        disabled={this.state.isConnecting}
-                      >
-                        Retry
-                      </RacingButton>
-                    </div>
-                  </div>
-                )}
-                {this.state.obdConnected && !this.state.isConnecting && (
-                  <div className="flex flex-col items-center gap-2 mb-2">
-                    <div className="h-8 w-8 rounded-full bg-racing-green flex items-center justify-center">
-                      <CheckCircle className="h-6 w-6 text-white" />
-                    </div>
-                    <span className="text-racing-green font-medium">OBD-II Connected!</span>
-                  </div>
-                )}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Bluetooth Connection */}
-                  <Card
-                    className={`p-4 border-racing-blue/20 hover:border-racing-blue/40 transition-colors cursor-pointer ${this.state.isConnecting ? 'opacity-50 pointer-events-none' : ''}`}
-                    onClick={this.connectOBDBluetooth}
-                  >
-                    <div className="text-center space-y-3">
-                      <div className="flex justify-center">
-                        <Bluetooth className="h-8 w-8 text-racing-blue" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-racing-blue">
-                          Bluetooth OBD
-                        </h4>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          ELM327 Bluetooth adapter
-                        </p>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        <div>✓ Wireless connection</div>
-                        <div>✓ Most common adapter</div>
-                        <div>✓ Works with phones/tablets</div>
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* USB/Serial Connection */}
-                  <Card
-                    className={`p-4 border-racing-green/20 hover:border-racing-green/40 transition-colors cursor-pointer ${this.state.isConnecting ? 'opacity-50 pointer-events-none' : ''}`}
-                    onClick={this.connectOBDSerial}
-                  >
-                    <div className="text-center space-y-3">
-                      <div className="flex justify-center">
-                        <Usb className="h-8 w-8 text-racing-green" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-racing-green">
-                          USB OBD
-                        </h4>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          USB/Serial OBD adapter
-                        </p>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        <div>✓ Stable connection</div>
-                        <div>✓ Faster data rates</div>
-                        <div>✓ No pairing required</div>
-                      </div>
-                    </div>
-                  </Card>
-                </div>
-
-                {/* What you'll get */}
-                <div className="bg-muted/20 rounded-lg p-4">
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <Activity className="h-4 w-4 text-racing-blue" />
-                    Real Vehicle Telemetry Data
-                  </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-racing-green rounded-full" />
-                      <span>Engine RPM</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-racing-blue rounded-full" />
-                      <span>Vehicle Speed</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-racing-red rounded-full" />
-                      <span>Coolant Temperature</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-racing-yellow rounded-full" />
-                      <span>Throttle Position</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-racing-purple rounded-full" />
-                      <span>Engine Load</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-racing-orange rounded-full" />
-                      <span>Fuel Level</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-racing-cyan rounded-full" />
-                      <span>Air Flow Rate</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-racing-pink rounded-full" />
-                      <span>Manifold Pressure</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Requirements */}
-                <details className="text-sm">
-                  <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
-                    Hardware Requirements ▼
-                  </summary>
-                  <div className="mt-3 p-3 bg-muted/10 rounded-lg text-xs text-muted-foreground space-y-2">
-                    <div>
-                      <strong>For Bluetooth:</strong> ELM327 Bluetooth OBD-II
-                      adapter (~$10-30)
-                    </div>
-                    <div>
-                      <strong>For USB:</strong> ELM327 USB OBD-II adapter
-                      (~$15-40)
-                    </div>
-                    <div>
-                      <strong>Vehicle:</strong> Most cars 1996+ (OBD-II
-                      compatible)
-                    </div>
-                    <div>
-                      <strong>Browser:</strong> Chrome/Edge (Web
-                      Bluetooth/Serial API support)
-                    </div>
-                  </div>
-                </details>
-
-                <div className="flex justify-center">
-                  <RacingButton
-                    variant="outline"
-                    onClick={this.dismissOBDDialog}
-                    className="px-8"
-                  >
-                    Cancel
-                  </RacingButton>
-                </div>
               </div>
             </Card>
           </div>
