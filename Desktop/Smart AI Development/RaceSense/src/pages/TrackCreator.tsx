@@ -454,6 +454,16 @@ const TrackCreator: React.FC = () => {
   const toggleDragMode = (mode: "points" | "sectors" | "none") => {
     setDragMode(mode);
     
+    // If activating drag mode, disable drawing mode
+    if (mode !== "none" && isDrawing) {
+      setIsDrawing(false);
+      notify({
+        type: "info",
+        title: "Drawing Mode Disabled",
+        message: "Drawing mode has been disabled to enable drag mode",
+      });
+    }
+    
     if (mode === "none") {
       setIsDragging(false);
       setSelectedPoint(null);
@@ -574,6 +584,11 @@ const TrackCreator: React.FC = () => {
     // Disable drag mode when starting drawing
     if (dragMode !== "none") {
       setDragMode("none");
+      notify({
+        type: "info",
+        title: "Drag Mode Disabled",
+        message: "Drag mode has been disabled to enable drawing mode",
+      });
     }
     setIsDrawing(true);
     notify({
@@ -701,12 +716,11 @@ const TrackCreator: React.FC = () => {
                         variant={isDrawing ? "default" : "outline"}
                         size="sm"
                         onClick={isDrawing ? handleStopDrawing : handleStartDrawing}
-                        disabled={dragMode !== "none"}
                         className={`${
                           isDrawing 
                             ? "bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/25" 
                             : dragMode !== "none"
-                            ? "border-gray-500 text-gray-500 cursor-not-allowed"
+                            ? "border-orange-500 text-orange-400 hover:bg-orange-500/10"
                             : "border-gray-600 text-gray-300 hover:bg-gray-700/50"
                         } transition-all duration-200 text-xs sm:text-sm`}
                       >
@@ -766,12 +780,10 @@ const TrackCreator: React.FC = () => {
                         className={`${
                           dragMode === "points"
                             ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25"
-                            : isDrawing
-                            ? "border-gray-500 text-gray-500 cursor-not-allowed"
                             : "border-gray-600 text-gray-300 hover:bg-gray-700/50"
                         } transition-all duration-200`}
                         title="Drag Points"
-                        disabled={track.points.length === 0 || isDrawing}
+                        disabled={track.points.length === 0}
                       >
                         <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                         <span className="hidden sm:inline">Drag Points</span>
@@ -785,12 +797,10 @@ const TrackCreator: React.FC = () => {
                         className={`${
                           dragMode === "sectors"
                             ? "bg-yellow-600 hover:bg-yellow-700 text-white shadow-lg shadow-yellow-500/25"
-                            : isDrawing
-                            ? "border-gray-500 text-gray-500 cursor-not-allowed"
                             : "border-gray-600 text-gray-300 hover:bg-gray-700/50"
                         } transition-all duration-200`}
                         title="Drag Sectors"
-                        disabled={track.sectors.length === 0 || isDrawing}
+                        disabled={track.sectors.length === 0}
                       >
                         <Timer className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                         <span className="hidden sm:inline">Drag Sectors</span>
