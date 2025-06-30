@@ -128,7 +128,9 @@ const TrackCreator: React.FC = () => {
       // Map click to add points
       // @ts-ignore
       map.addListener("click", (e: any) => {
+        console.log("Map clicked:", { isDrawing, currentMode, latLng: e.latLng });
         if (isDrawing && e.latLng) {
+          console.log("Adding point at:", e.latLng.lat(), e.latLng.lng());
           addPoint(e.latLng.lat(), e.latLng.lng());
         }
       });
@@ -268,6 +270,11 @@ const TrackCreator: React.FC = () => {
     updateSectorMarkers();
   }, [dragMode]);
 
+  // Debug drawing state changes
+  useEffect(() => {
+    console.log("Drawing state changed:", { isDrawing, currentMode, dragMode });
+  }, [isDrawing, currentMode, dragMode]);
+
 
 
   // Update sector markers
@@ -389,6 +396,7 @@ const TrackCreator: React.FC = () => {
 
   // Add point
   const addPoint = (lat: number, lng: number) => {
+    console.log("addPoint called with:", lat, lng);
     const newPoint: TrackPoint = {
       id: Date.now().toString(),
       lat,
@@ -398,9 +406,11 @@ const TrackCreator: React.FC = () => {
       order: track.points.length,
     };
     
+    console.log("New point:", newPoint);
     setTrack(prev => {
       const newPoints = [...prev.points, newPoint];
       const newLength = calculateTrackLength(newPoints);
+      console.log("Updated track with new point:", { newPoints, newLength });
       return {
         ...prev,
         points: newPoints,
@@ -636,6 +646,7 @@ const TrackCreator: React.FC = () => {
 
   // Drawing controls
   const handleStartDrawing = () => {
+    console.log("handleStartDrawing called");
     // Disable drag mode when starting drawing
     if (dragMode !== "none") {
       setDragMode("none");
@@ -646,6 +657,7 @@ const TrackCreator: React.FC = () => {
       });
     }
     setIsDrawing(true);
+    console.log("Drawing mode set to true");
     notify({
       type: "success",
       title: "Drawing Mode Active",
