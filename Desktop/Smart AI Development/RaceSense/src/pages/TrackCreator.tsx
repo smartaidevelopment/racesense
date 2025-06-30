@@ -103,6 +103,7 @@ const TrackCreator: React.FC = () => {
   const [dragMode, setDragMode] = useState<"points" | "sectors" | "none">("none");
   const [selectedSector, setSelectedSector] = useState<any>(null);
   const [sectorMarkersRef, setSectorMarkersRef] = useState<any[]>([]);
+  const [showInstructions, setShowInstructions] = useState(true);
 
   // Load Google Maps
   useEffect(() => {
@@ -548,6 +549,7 @@ const TrackCreator: React.FC = () => {
       length: 0 
     }));
     setSelectedPoint(null);
+    setShowInstructions(true); // Show instructions again when track is cleared
     notify({
       type: "warning",
       title: "Track Cleared",
@@ -833,37 +835,58 @@ const TrackCreator: React.FC = () => {
                 )}
 
                 {/* Instructions */}
-                {!isDrawing && track.points.length === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center text-gray-400 pointer-events-none z-10 p-4">
-                    <div className="text-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 lg:p-8 rounded-xl sm:rounded-2xl border border-gray-700/50 max-w-sm sm:max-w-md">
-                      <div className="p-3 sm:p-4 bg-blue-500/20 rounded-full w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 flex items-center justify-center">
-                        <Globe className="h-8 w-8 sm:h-10 sm:w-10 text-blue-400" />
+                {!isDrawing && track.points.length === 0 && showInstructions && (
+                  <div className="absolute bottom-4 left-4 right-4 z-10">
+                    <div className="text-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 rounded-lg sm:rounded-xl border border-gray-700/50 max-w-sm mx-auto relative">
+                      {/* Dismiss Button */}
+                      <button
+                        onClick={() => setShowInstructions(false)}
+                        className="absolute top-2 right-2 p-1 text-gray-400 hover:text-white transition-colors duration-200 pointer-events-auto"
+                        title="Dismiss instructions"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                      
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <div className="p-1.5 sm:p-2 bg-blue-500/20 rounded-full">
+                          <Globe className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
+                        </div>
+                        <h3 className="text-sm sm:text-base font-semibold text-white">Ready to Create Your Track</h3>
                       </div>
-                      <h3 className="text-lg sm:text-xl font-semibold text-white mb-2 sm:mb-3">Ready to Create Your Track</h3>
-                      <p className="text-gray-300 mb-4 sm:mb-6 text-sm sm:text-base">Click "Start Drawing" to begin creating your custom racing circuit</p>
-                      <div className="text-xs sm:text-sm text-gray-400 space-y-1 sm:space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-400 rounded-full" />
+                      <p className="text-gray-300 text-xs sm:text-sm mb-2">Click "Start Drawing" to begin creating your custom racing circuit</p>
+                      <div className="text-xs text-gray-400 space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
                           <span>Navigate to any location worldwide</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-400 rounded-full" />
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 bg-green-400 rounded-full" />
                           <span>Click to add track points</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-400 rounded-full" />
-                          <span>Use zoom for precise placement</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-purple-400 rounded-full" />
-                          <span>Add timing sectors for analysis</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-400 rounded-full" />
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 bg-orange-400 rounded-full" />
                           <span>Drag points and sectors to adjust positions</span>
                         </div>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Show Instructions Button */}
+                {!isDrawing && track.points.length === 0 && !showInstructions && (
+                  <div className="absolute bottom-4 left-4 z-10">
+                    <button
+                      onClick={() => setShowInstructions(true)}
+                      className="bg-black/80 backdrop-blur-sm p-2 rounded-lg border border-gray-700/50 text-white text-xs hover:bg-black/90 transition-colors duration-200 pointer-events-auto"
+                      title="Show instructions"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <Info className="h-3 w-3" />
+                        <span>Show Help</span>
+                      </div>
+                    </button>
                   </div>
                 )}
 
