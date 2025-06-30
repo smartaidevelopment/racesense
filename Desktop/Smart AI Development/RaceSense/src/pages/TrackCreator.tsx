@@ -30,6 +30,8 @@ import {
   ZoomOut,
   Crosshair,
   Globe,
+  ArrowLeft,
+  Info,
 } from "lucide-react";
 import { useNotifications } from "@/components/RacingNotifications";
 import { Loader } from "@googlemaps/js-api-loader";
@@ -420,116 +422,204 @@ const TrackCreator: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-black text-white">
+      <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-green-500 to-blue-500 bg-clip-text text-transparent">
-            Create Custom Track
-          </h1>
-          <p className="text-gray-400 text-lg">
-            Design your own racing circuit using Google Maps
-          </p>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg">
+              <Globe className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+                Create Custom Track
+              </h1>
+              <p className="text-gray-400 text-lg mt-1">
+                Design your own racing circuit using Google Maps
+              </p>
+            </div>
+          </div>
+          
+          {/* Quick Stats */}
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="bg-gradient-to-r from-blue-500/10 to-blue-600/10 border border-blue-500/20 rounded-xl p-4">
+              <div className="text-2xl font-bold text-blue-400">{track.points.length}</div>
+              <div className="text-blue-300 text-sm font-medium">Track Points</div>
+            </div>
+            <div className="bg-gradient-to-r from-green-500/10 to-green-600/10 border border-green-500/20 rounded-xl p-4">
+              <div className="text-2xl font-bold text-green-400">{(track.length / 1000).toFixed(2)}</div>
+              <div className="text-green-300 text-sm font-medium">Length (km)</div>
+            </div>
+            <div className="bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 border border-yellow-500/20 rounded-xl p-4">
+              <div className="text-2xl font-bold text-yellow-400">{track.sectors.length}</div>
+              <div className="text-yellow-300 text-sm font-medium">Sectors</div>
+            </div>
+            <div className="bg-gradient-to-r from-purple-500/10 to-purple-600/10 border border-purple-500/20 rounded-xl p-4">
+              <div className="text-2xl font-bold text-purple-400">
+                {track.points.filter(p => p.type === "start" || p.type === "finish").length}
+              </div>
+              <div className="text-purple-300 text-sm font-medium">Timing Lines</div>
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Map Section */}
           <div className="lg:col-span-3">
-            <Card className="bg-gray-800 border-gray-700">
-              <CardHeader>
+            <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+              <CardHeader className="pb-4">
                 <CardTitle className="text-white flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Globe className="h-5 w-5 text-blue-400" />
-                    Google Map - Interactive Track Design
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-500/20 rounded-lg">
+                      <Globe className="h-5 w-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <div className="text-lg font-semibold">Interactive Track Design</div>
+                      <div className="text-sm text-gray-400">Click on the map to add track points</div>
+                    </div>
                   </div>
+                  
+                  {/* Map Controls */}
                   <div className="flex gap-2">
                     <Button
                       variant={isDrawing ? "default" : "outline"}
                       size="sm"
                       onClick={isDrawing ? handleStopDrawing : handleStartDrawing}
-                      className={isDrawing ? "bg-green-600 hover:bg-green-700" : ""}
+                      className={`${
+                        isDrawing 
+                          ? "bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/25" 
+                          : "border-gray-600 text-gray-300 hover:bg-gray-700/50"
+                      } transition-all duration-200`}
                     >
-                      {isDrawing ? "Stop Drawing" : "Start Drawing"}
+                      {isDrawing ? (
+                        <>
+                          <Square className="h-4 w-4 mr-2" />
+                          Stop Drawing
+                        </>
+                      ) : (
+                        <>
+                          <Circle className="h-4 w-4 mr-2" />
+                          Start Drawing
+                        </>
+                      )}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleZoomIn}
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                    >
-                      <ZoomIn className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleZoomOut}
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                    >
-                      <ZoomOut className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleCenterMap}
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                    >
-                      <Crosshair className="h-4 w-4" />
-                    </Button>
+                    
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleZoomIn}
+                        className="border-gray-600 text-gray-300 hover:bg-gray-700/50 transition-all duration-200"
+                        title="Zoom In"
+                      >
+                        <ZoomIn className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleZoomOut}
+                        className="border-gray-600 text-gray-300 hover:bg-gray-700/50 transition-all duration-200"
+                        title="Zoom Out"
+                      >
+                        <ZoomOut className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCenterMap}
+                        className="border-gray-600 text-gray-300 hover:bg-gray-700/50 transition-all duration-200"
+                        title="Center Map"
+                      >
+                        <Crosshair className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    
                     <Button
                       variant={mapTypeId === "satellite" ? "default" : "outline"}
                       size="sm"
                       onClick={handleToggleMapType}
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                      className={`${
+                        mapTypeId === "satellite"
+                          ? "bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/25"
+                          : "border-gray-600 text-gray-300 hover:bg-gray-700/50"
+                      } transition-all duration-200`}
+                      title="Toggle Map Type"
                     >
                       <Globe className="h-4 w-4 mr-1" />
                       {mapTypeId === "satellite" ? "Satellite" : "Map"}
                     </Button>
+                    
                     <Button
-                      variant="outline"
+                      variant={showSectors ? "default" : "outline"}
                       size="sm"
                       onClick={() => setShowSectors(!showSectors)}
-                      className={showSectors ? "bg-yellow-600 hover:bg-yellow-700" : ""}
+                      className={`${
+                        showSectors
+                          ? "bg-yellow-600 hover:bg-yellow-700 text-white shadow-lg shadow-yellow-500/25"
+                          : "border-gray-600 text-gray-300 hover:bg-gray-700/50"
+                      } transition-all duration-200`}
+                      title="Toggle Sectors"
                     >
                       <Timer className="h-4 w-4" />
                     </Button>
+                    
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={clearTrack}
-                      className="text-red-400 border-red-400 hover:bg-red-400/10"
+                      className="text-red-400 border-red-400/50 hover:bg-red-400/10 transition-all duration-200"
+                      title="Clear Track"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              
+              <CardContent className="p-0">
                 {/* Interactive Google Map */}
                 <div
                   ref={mapRef}
-                  className="w-full h-96 rounded-lg border border-gray-600 relative overflow-hidden"
+                  className="w-full h-[500px] rounded-b-lg border-t border-gray-700/50 relative overflow-hidden"
                   style={{ zIndex: 1 }}
                 />
                 
                 {/* Drawing Mode Indicator */}
                 {isDrawing && (
-                  <div className="absolute top-4 left-4 bg-green-600 text-white px-3 py-1 rounded-full text-sm font-medium z-10">
-                    Drawing Mode: Track Points
+                  <div className="absolute top-4 left-4 bg-gradient-to-r from-green-600 to-green-500 text-white px-4 py-2 rounded-full text-sm font-medium z-10 shadow-lg shadow-green-500/25 animate-pulse">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-white rounded-full animate-ping" />
+                      Drawing Mode Active
+                    </div>
                   </div>
                 )}
 
                 {/* Instructions */}
                 {!isDrawing && track.points.length === 0 && (
                   <div className="absolute inset-0 flex items-center justify-center text-gray-400 pointer-events-none z-10">
-                    <div className="text-center bg-black/50 p-6 rounded-lg">
-                      <Globe className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p className="text-lg font-semibold text-white">Google Map Ready</p>
-                      <p className="text-sm text-gray-300 mb-4">Click "Start Drawing" to begin creating your track</p>
-                      <div className="text-xs text-gray-400 space-y-1">
-                        <p>• Navigate to any location in the world</p>
-                        <p>• Click on the map to add track points</p>
-                        <p>• Use zoom controls for precise placement</p>
-                        <p>• Add timing sectors for detailed analysis</p>
+                    <div className="text-center bg-black/60 backdrop-blur-sm p-8 rounded-2xl border border-gray-700/50 max-w-md">
+                      <div className="p-4 bg-blue-500/20 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                        <Globe className="h-10 w-10 text-blue-400" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-white mb-3">Ready to Create Your Track</h3>
+                      <p className="text-gray-300 mb-6">Click "Start Drawing" to begin creating your custom racing circuit</p>
+                      <div className="text-sm text-gray-400 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-blue-400 rounded-full" />
+                          <span>Navigate to any location worldwide</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-green-400 rounded-full" />
+                          <span>Click to add track points</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-yellow-400 rounded-full" />
+                          <span>Use zoom for precise placement</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-purple-400 rounded-full" />
+                          <span>Add timing sectors for analysis</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -537,44 +627,28 @@ const TrackCreator: React.FC = () => {
 
                 {/* Track Creation Progress */}
                 {track.points.length > 0 && (
-                  <div className="absolute top-4 right-4 bg-black/70 p-3 rounded-lg text-white text-sm z-10">
-                    <div className="font-semibold mb-1">Track Progress</div>
-                    <div className="space-y-1 text-xs">
-                      <div>Points: {track.points.length}</div>
-                      <div>Length: {(track.length / 1000).toFixed(2)} km</div>
-                      <div>Sectors: {track.sectors.length}</div>
-                      <div>Zoom: {zoom}</div>
+                  <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-sm p-4 rounded-xl border border-gray-700/50 text-white text-sm z-10">
+                    <div className="font-semibold mb-3 text-blue-400">Track Progress</div>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Points:</span>
+                        <span className="text-blue-400 font-medium">{track.points.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Length:</span>
+                        <span className="text-green-400 font-medium">{(track.length / 1000).toFixed(2)} km</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Sectors:</span>
+                        <span className="text-yellow-400 font-medium">{track.sectors.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Zoom:</span>
+                        <span className="text-purple-400 font-medium">{zoom}</span>
+                      </div>
                     </div>
                   </div>
                 )}
-
-                {/* Track Statistics */}
-                <div className="mt-4 grid grid-cols-4 gap-4">
-                  <div className="bg-gray-700 rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold text-blue-400">
-                      {track.points.length}
-                    </div>
-                    <div className="text-gray-400 text-sm">Points</div>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold text-green-400">
-                      {(track.length / 1000).toFixed(2)}
-                    </div>
-                    <div className="text-gray-400 text-sm">Length (km)</div>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold text-yellow-400">
-                      {track.sectors.length}
-                    </div>
-                    <div className="text-gray-400 text-sm">Sectors</div>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold text-purple-400">
-                      {track.points.filter(p => p.type === "start" || p.type === "finish").length}
-                    </div>
-                    <div className="text-gray-400 text-sm">Timing Lines</div>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -582,77 +656,92 @@ const TrackCreator: React.FC = () => {
           {/* Control Panel */}
           <div className="space-y-6">
             <Tabs defaultValue="info" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 bg-gray-800">
-                <TabsTrigger value="info" className="text-white">Info</TabsTrigger>
-                <TabsTrigger value="points" className="text-white">Points</TabsTrigger>
-                <TabsTrigger value="sectors" className="text-white">Sectors</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3 bg-gradient-to-r from-gray-800 to-gray-900 border border-gray-700/50 p-1 rounded-lg">
+                <TabsTrigger value="info" className="text-white data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 rounded-md transition-all duration-200">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Info
+                </TabsTrigger>
+                <TabsTrigger value="points" className="text-white data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400 rounded-md transition-all duration-200">
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Points
+                </TabsTrigger>
+                <TabsTrigger value="sectors" className="text-white data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-400 rounded-md transition-all duration-200">
+                  <Timer className="h-4 w-4 mr-2" />
+                  Sectors
+                </TabsTrigger>
               </TabsList>
 
               {/* Track Information Tab */}
               <TabsContent value="info" className="space-y-4">
-                <Card className="bg-gray-800 border-gray-700">
+                <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
                   <CardHeader>
-                    <CardTitle className="text-white flex items-center gap-2">
-                      <Settings className="h-5 w-5 text-purple-400" />
+                    <CardTitle className="text-white flex items-center gap-3">
+                      <div className="p-2 bg-purple-500/20 rounded-lg">
+                        <Settings className="h-5 w-5 text-purple-400" />
+                      </div>
                       Track Information
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <Label htmlFor="trackName" className="text-gray-300">Track Name</Label>
+                      <Label htmlFor="trackName" className="text-gray-300 font-medium">Track Name</Label>
                       <Input
                         id="trackName"
                         value={track.name}
                         onChange={(e) => setTrack(prev => ({ ...prev, name: e.target.value }))}
                         placeholder="Enter track name"
-                        className="bg-gray-700 border-gray-600 text-white"
+                        className="bg-gray-700/50 border-gray-600/50 text-white placeholder:text-gray-500 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all duration-200"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="trackCity" className="text-gray-300">City</Label>
-                      <Input
-                        id="trackCity"
-                        value={track.city}
-                        onChange={(e) => setTrack(prev => ({ ...prev, city: e.target.value }))}
-                        placeholder="Enter city"
-                        className="bg-gray-700 border-gray-600 text-white"
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="trackCity" className="text-gray-300 font-medium">City</Label>
+                        <Input
+                          id="trackCity"
+                          value={track.city}
+                          onChange={(e) => setTrack(prev => ({ ...prev, city: e.target.value }))}
+                          placeholder="Enter city"
+                          className="bg-gray-700/50 border-gray-600/50 text-white placeholder:text-gray-500 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all duration-200"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="trackCountry" className="text-gray-300 font-medium">Country</Label>
+                        <Input
+                          id="trackCountry"
+                          value={track.country}
+                          onChange={(e) => setTrack(prev => ({ ...prev, country: e.target.value }))}
+                          placeholder="Enter country"
+                          className="bg-gray-700/50 border-gray-600/50 text-white placeholder:text-gray-500 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all duration-200"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <Label htmlFor="trackCountry" className="text-gray-300">Country</Label>
-                      <Input
-                        id="trackCountry"
-                        value={track.country}
-                        onChange={(e) => setTrack(prev => ({ ...prev, country: e.target.value }))}
-                        placeholder="Enter country"
-                        className="bg-gray-700 border-gray-600 text-white"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="trackSurface" className="text-gray-300">Surface</Label>
-                      <select
-                        id="trackSurface"
-                        value={track.surface}
-                        onChange={(e) => setTrack(prev => ({ ...prev, surface: e.target.value as any }))}
-                        className="w-full bg-gray-700 border border-gray-600 text-white rounded-md px-3 py-2"
-                      >
-                        <option value="asphalt">Asphalt</option>
-                        <option value="concrete">Concrete</option>
-                        <option value="dirt">Dirt</option>
-                        <option value="gravel">Gravel</option>
-                      </select>
-                    </div>
-                    <div>
-                      <Label htmlFor="trackDirection" className="text-gray-300">Direction</Label>
-                      <select
-                        id="trackDirection"
-                        value={track.direction}
-                        onChange={(e) => setTrack(prev => ({ ...prev, direction: e.target.value as any }))}
-                        className="w-full bg-gray-700 border border-gray-600 text-white rounded-md px-3 py-2"
-                      >
-                        <option value="clockwise">Clockwise</option>
-                        <option value="counterclockwise">Counter-clockwise</option>
-                      </select>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="trackSurface" className="text-gray-300 font-medium">Surface</Label>
+                        <select
+                          id="trackSurface"
+                          value={track.surface}
+                          onChange={(e) => setTrack(prev => ({ ...prev, surface: e.target.value as any }))}
+                          className="w-full bg-gray-700/50 border border-gray-600/50 text-white rounded-md px-3 py-2 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all duration-200"
+                        >
+                          <option value="asphalt">Asphalt</option>
+                          <option value="concrete">Concrete</option>
+                          <option value="dirt">Dirt</option>
+                          <option value="gravel">Gravel</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label htmlFor="trackDirection" className="text-gray-300 font-medium">Direction</Label>
+                        <select
+                          id="trackDirection"
+                          value={track.direction}
+                          onChange={(e) => setTrack(prev => ({ ...prev, direction: e.target.value as any }))}
+                          className="w-full bg-gray-700/50 border border-gray-600/50 text-white rounded-md px-3 py-2 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all duration-200"
+                        >
+                          <option value="clockwise">Clockwise</option>
+                          <option value="counterclockwise">Counter-clockwise</option>
+                        </select>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -660,62 +749,74 @@ const TrackCreator: React.FC = () => {
 
               {/* Points Tab */}
               <TabsContent value="points" className="space-y-4">
-                <Card className="bg-gray-800 border-gray-700">
+                <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
                   <CardHeader>
-                    <CardTitle className="text-white flex items-center gap-2">
-                      <MapPin className="h-5 w-5 text-blue-400" />
+                    <CardTitle className="text-white flex items-center gap-3">
+                      <div className="p-2 bg-blue-500/20 rounded-lg">
+                        <MapPin className="h-5 w-5 text-blue-400" />
+                      </div>
                       Track Points
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-4">
                     <div className="flex gap-2 mb-4">
                       <Button
                         variant={currentMode === "draw" ? "default" : "outline"}
                         size="sm"
                         onClick={() => setCurrentMode("draw")}
-                        className="flex-1"
+                        className={`flex-1 ${
+                          currentMode === "draw"
+                            ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25"
+                            : "border-gray-600 text-gray-300 hover:bg-gray-700/50"
+                        } transition-all duration-200`}
                       >
-                        <Circle className="h-4 w-4 mr-1" />
+                        <Circle className="h-4 w-4 mr-2" />
                         Points
                       </Button>
                       <Button
                         variant={currentMode === "start-finish" ? "default" : "outline"}
                         size="sm"
                         onClick={() => setCurrentMode("start-finish")}
-                        className="flex-1"
+                        className={`flex-1 ${
+                          currentMode === "start-finish"
+                            ? "bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/25"
+                            : "border-gray-600 text-gray-300 hover:bg-gray-700/50"
+                        } transition-all duration-200`}
                       >
-                        <Flag className="h-4 w-4 mr-1" />
+                        <Flag className="h-4 w-4 mr-2" />
                         Start/Finish
                       </Button>
                     </div>
 
                     {track.points.length === 0 ? (
                       <div className="text-center text-gray-400 py-8">
-                        <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p>No points added yet</p>
-                        <p className="text-sm">Start drawing to add track points</p>
+                        <div className="p-4 bg-gray-700/30 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                          <MapPin className="h-8 w-8 opacity-50" />
+                        </div>
+                        <p className="font-medium">No points added yet</p>
+                        <p className="text-sm text-gray-500">Start drawing to add track points</p>
                       </div>
                     ) : (
                       <div className="space-y-2 max-h-64 overflow-y-auto">
                         {track.points.map((point, index) => (
                           <div
                             key={point.id}
-                            className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                            className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
                               selectedPoint?.id === point.id
-                                ? "bg-blue-600 border-blue-400"
-                                : "bg-gray-700 border-gray-600 hover:bg-gray-650"
+                                ? "bg-blue-600/20 border-blue-400/50 shadow-lg shadow-blue-500/25"
+                                : "bg-gray-700/30 border-gray-600/50 hover:bg-gray-700/50 hover:border-gray-500/50"
                             }`}
                             onClick={() => setSelectedPoint(point)}
                           >
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-3">
                                 <div className={`w-3 h-3 rounded-full ${
-                                  point.type === "start" ? "bg-green-500" :
-                                  point.type === "finish" ? "bg-red-500" :
-                                  point.type === "sector" ? "bg-yellow-500" :
-                                  "bg-blue-500"
+                                  point.type === "start" ? "bg-green-500 shadow-lg shadow-green-500/50" :
+                                  point.type === "finish" ? "bg-red-500 shadow-lg shadow-red-500/50" :
+                                  point.type === "sector" ? "bg-yellow-500 shadow-lg shadow-yellow-500/50" :
+                                  "bg-blue-500 shadow-lg shadow-blue-500/50"
                                 }`} />
-                                <span className="text-sm font-medium">{point.name}</span>
+                                <span className="text-sm font-medium text-white">{point.name || `Point ${index + 1}`}</span>
                               </div>
                               <Button
                                 variant="outline"
@@ -724,12 +825,12 @@ const TrackCreator: React.FC = () => {
                                   e.stopPropagation();
                                   removePoint(point.id);
                                 }}
-                                className="text-red-400 border-red-400 hover:bg-red-400/10"
+                                className="text-red-400 border-red-400/50 hover:bg-red-400/10 transition-all duration-200"
                               >
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
-                            <div className="text-xs text-gray-400 mt-1">
+                            <div className="text-xs text-gray-400 mt-2 font-mono">
                               {point.lat.toFixed(6)}, {point.lng.toFixed(6)}
                             </div>
                           </div>
@@ -741,30 +842,32 @@ const TrackCreator: React.FC = () => {
 
                 {/* Point Editor */}
                 {selectedPoint && (
-                  <Card className="bg-gray-800 border-gray-700">
+                  <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
                     <CardHeader>
-                      <CardTitle className="text-white flex items-center gap-2">
-                        <Settings className="h-5 w-5 text-blue-400" />
+                      <CardTitle className="text-white flex items-center gap-3">
+                        <div className="p-2 bg-blue-500/20 rounded-lg">
+                          <Settings className="h-5 w-5 text-blue-400" />
+                        </div>
                         Edit Point
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div>
-                        <Label htmlFor="pointName" className="text-gray-300">Point Name</Label>
+                        <Label htmlFor="pointName" className="text-gray-300 font-medium">Point Name</Label>
                         <Input
                           id="pointName"
                           value={selectedPoint.name || ""}
                           onChange={(e) => updatePoint(selectedPoint.id, { name: e.target.value })}
-                          className="bg-gray-700 border-gray-600 text-white"
+                          className="bg-gray-700/50 border-gray-600/50 text-white placeholder:text-gray-500 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all duration-200"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="pointType" className="text-gray-300">Point Type</Label>
+                        <Label htmlFor="pointType" className="text-gray-300 font-medium">Point Type</Label>
                         <select
                           id="pointType"
                           value={selectedPoint.type}
                           onChange={(e) => updatePoint(selectedPoint.id, { type: e.target.value as any })}
-                          className="w-full bg-gray-700 border border-gray-600 text-white rounded-md px-3 py-2"
+                          className="w-full bg-gray-700/50 border border-gray-600/50 text-white rounded-md px-3 py-2 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all duration-200"
                         >
                           <option value="corner">Corner</option>
                           <option value="straight">Straight</option>
@@ -774,14 +877,14 @@ const TrackCreator: React.FC = () => {
                           <option value="checkpoint">Checkpoint</option>
                         </select>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="grid grid-cols-2 gap-4 p-3 bg-gray-700/30 rounded-lg">
                         <div>
-                          <span className="text-gray-400">Lat:</span>
-                          <div className="text-white">{selectedPoint.lat.toFixed(6)}</div>
+                          <span className="text-gray-400 text-sm font-medium">Latitude:</span>
+                          <div className="text-white font-mono text-sm">{selectedPoint.lat.toFixed(6)}</div>
                         </div>
                         <div>
-                          <span className="text-gray-400">Lng:</span>
-                          <div className="text-white">{selectedPoint.lng.toFixed(6)}</div>
+                          <span className="text-gray-400 text-sm font-medium">Longitude:</span>
+                          <div className="text-white font-mono text-sm">{selectedPoint.lng.toFixed(6)}</div>
                         </div>
                       </div>
                     </CardContent>
@@ -791,37 +894,45 @@ const TrackCreator: React.FC = () => {
 
               {/* Sectors Tab */}
               <TabsContent value="sectors" className="space-y-4">
-                <Card className="bg-gray-800 border-gray-700">
+                <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
                   <CardHeader>
-                    <CardTitle className="text-white flex items-center gap-2">
-                      <Timer className="h-5 w-5 text-yellow-400" />
+                    <CardTitle className="text-white flex items-center gap-3">
+                      <div className="p-2 bg-yellow-500/20 rounded-lg">
+                        <Timer className="h-5 w-5 text-yellow-400" />
+                      </div>
                       Timing Sectors
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="text-sm text-gray-400 mb-4">
-                      Select two points to create a timing sector between them
+                    <div className="text-sm text-gray-400 mb-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Info className="h-4 w-4 text-blue-400" />
+                        <span className="font-medium text-blue-300">How to create sectors</span>
+                      </div>
+                      Select two points below to create a timing sector between them
                     </div>
 
                     {track.sectors.length === 0 ? (
                       <div className="text-center text-gray-400 py-8">
-                        <Timer className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p>No sectors defined yet</p>
-                        <p className="text-sm">Create sectors for detailed timing analysis</p>
+                        <div className="p-4 bg-gray-700/30 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                          <Timer className="h-8 w-8 opacity-50" />
+                        </div>
+                        <p className="font-medium">No sectors defined yet</p>
+                        <p className="text-sm text-gray-500">Create sectors for detailed timing analysis</p>
                       </div>
                     ) : (
                       <div className="space-y-2 max-h-48 overflow-y-auto">
                         {track.sectors.map((sector) => (
-                          <div key={sector.id} className="p-3 bg-gray-700 rounded-lg border border-gray-600">
+                          <div key={sector.id} className="p-3 bg-gray-700/30 rounded-lg border border-gray-600/50 hover:bg-gray-700/50 transition-all duration-200">
                             <div className="flex items-center justify-between mb-2">
                               <span className="font-medium text-white">{sector.name}</span>
-                              <Badge className="bg-yellow-500 text-black text-xs">
+                              <Badge className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-xs">
                                 {(sector.length / 1000).toFixed(2)} km
                               </Badge>
                             </div>
-                            <div className="text-xs text-gray-400">
-                              From: {sector.startPoint.name}<br />
-                              To: {sector.endPoint.name}
+                            <div className="text-xs text-gray-400 space-y-1">
+                              <div>From: <span className="text-white">{sector.startPoint.name}</span></div>
+                              <div>To: <span className="text-white">{sector.endPoint.name}</span></div>
                             </div>
                           </div>
                         ))}
@@ -829,22 +940,22 @@ const TrackCreator: React.FC = () => {
                     )}
 
                     {track.points.length >= 2 && (
-                      <div className="space-y-2">
-                        <Label className="text-gray-300">Create New Sector</Label>
+                      <div className="space-y-3 p-4 bg-gray-700/20 rounded-lg border border-gray-600/30">
+                        <Label className="text-gray-300 font-medium">Create New Sector</Label>
                         <div className="grid grid-cols-2 gap-2">
-                          <select className="bg-gray-700 border border-gray-600 text-white rounded-md px-3 py-2 text-sm">
+                          <select className="bg-gray-700/50 border border-gray-600/50 text-white rounded-md px-3 py-2 text-sm focus:border-yellow-500/50 focus:ring-yellow-500/20 transition-all duration-200">
                             <option value="">Start Point</option>
                             {track.points.map((point) => (
                               <option key={point.id} value={point.id}>
-                                {point.name}
+                                {point.name || `Point ${point.order + 1}`}
                               </option>
                             ))}
                           </select>
-                          <select className="bg-gray-700 border border-gray-600 text-white rounded-md px-3 py-2 text-sm">
+                          <select className="bg-gray-700/50 border border-gray-600/50 text-white rounded-md px-3 py-2 text-sm focus:border-yellow-500/50 focus:ring-yellow-500/20 transition-all duration-200">
                             <option value="">End Point</option>
                             {track.points.map((point) => (
                               <option key={point.id} value={point.id}>
-                                {point.name}
+                                {point.name || `Point ${point.order + 1}`}
                               </option>
                             ))}
                           </select>
@@ -852,7 +963,7 @@ const TrackCreator: React.FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-full border-yellow-500 text-yellow-400 hover:bg-yellow-500/10"
+                          className="w-full border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10 transition-all duration-200"
                         >
                           <Plus className="h-4 w-4 mr-2" />
                           Create Sector
@@ -865,11 +976,11 @@ const TrackCreator: React.FC = () => {
             </Tabs>
 
             {/* Actions */}
-            <Card className="bg-gray-800 border-gray-700">
-              <CardContent className="p-4 space-y-3">
+            <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+              <CardContent className="p-6 space-y-4">
                 <Button
                   onClick={handleSaveTrack}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg shadow-green-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={track.points.length < 3 || !track.name || !track.city || !track.country}
                 >
                   <Save className="h-4 w-4 mr-2" />
@@ -878,9 +989,10 @@ const TrackCreator: React.FC = () => {
                 <Button
                   variant="outline"
                   onClick={() => navigate("/mode-selection")}
-                  className="w-full border-gray-600 text-gray-300 hover:bg-gray-700"
+                  className="w-full border-gray-600/50 text-gray-300 hover:bg-gray-700/50 transition-all duration-200"
                 >
-                  Cancel
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Mode Selection
                 </Button>
               </CardContent>
             </Card>
