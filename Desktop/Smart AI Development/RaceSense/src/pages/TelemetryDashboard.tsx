@@ -87,6 +87,7 @@ interface TelemetryState {
   obdError: string | null;
   isConnecting: boolean;
   connectError: string | null;
+  isDemoMode: boolean;
 }
 
 class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
@@ -135,6 +136,7 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
       obdError: null,
       isConnecting: false,
       connectError: null,
+      isDemoMode: false,
     };
   }
 
@@ -203,9 +205,6 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
       this.setState({ obdError: error });
       notify.error("OBD Connection Error", error, { duration: 6000 });
     });
-
-    // Start live telemetry simulation (fallback when OBD not connected)
-    this.startTelemetryUpdates();
   }
 
   componentWillUnmount() {
@@ -628,10 +627,10 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
     obdIntegrationService.startSimulationMode();
     this.setState({
       showOBDConnectionDialog: false,
-      obdConnected: true,
+      obdConnected: false,
       useRealTelemetry: true,
+      isDemoMode: true,
     });
-
     notify.success(
       "OBD Simulation Started",
       "Using realistic simulated vehicle telemetry data",
@@ -680,10 +679,44 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
       obdError,
       isConnecting,
       connectError,
+      isDemoMode,
     } = this.state;
+
+    // Show Demo Mode banner if active
+    const demoBanner = isDemoMode ? (
+      <div className="w-full bg-yellow-400 text-black text-center py-2 font-semibold text-sm mb-4 rounded shadow">
+        Demo Mode: No real car connected. Telemetry is simulated.
+      </div>
+    ) : null;
+
+    // If not connected and not in demo mode, show a message and disable telemetry
+    if (!obdConnected && !isDemoMode) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="text-2xl font-bold mb-4">No Vehicle Connected</div>
+          <div className="text-muted-foreground mb-6">Connect an OBD-II device or start Demo Mode to view telemetry.</div>
+          <div className="flex gap-4">
+            <RacingButton
+              variant="racing"
+              racing="blue"
+              onClick={this.showOBDConnectionDialog}
+            >
+              Connect Vehicle
+            </RacingButton>
+            <RacingButton
+              variant="outline"
+              onClick={this.startOBDSimulation}
+            >
+              Start Demo Mode
+            </RacingButton>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-8">
+        {demoBanner}
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
