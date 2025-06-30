@@ -253,6 +253,19 @@ const TrackCreator: React.FC = () => {
     }
   }, [track.points, dragMode]);
 
+  // Update markers when drag mode changes
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    
+    // Update existing markers draggable state
+    markersRef.current.forEach(marker => {
+      marker.setDraggable(dragMode === "points");
+    });
+    
+    // Update sector markers
+    updateSectorMarkers();
+  }, [dragMode]);
+
   // Update sector markers
   const updateSectorMarkers = () => {
     if (!mapInstanceRef.current) return;
@@ -440,10 +453,39 @@ const TrackCreator: React.FC = () => {
 
   const toggleDragMode = (mode: "points" | "sectors" | "none") => {
     setDragMode(mode);
+    
     if (mode === "none") {
       setIsDragging(false);
       setSelectedPoint(null);
       setSelectedSector(null);
+      notify({
+        type: "info",
+        title: "Drag Mode Disabled",
+        message: "Drag functionality has been disabled",
+      });
+    } else if (mode === "points") {
+      notify({
+        type: "info",
+        title: "Drag Points Mode Active",
+        message: "You can now drag track points to reposition them",
+      });
+    } else if (mode === "sectors") {
+      notify({
+        type: "info",
+        title: "Drag Sectors Mode Active",
+        message: "You can now drag sector start/end points to adjust sectors",
+      });
+    }
+    
+    // Update markers to reflect new drag mode
+    if (mapInstanceRef.current) {
+      // Update existing markers
+      markersRef.current.forEach(marker => {
+        marker.setDraggable(mode === "points");
+      });
+      
+      // Update sector markers
+      updateSectorMarkers();
     }
   };
 
@@ -529,6 +571,10 @@ const TrackCreator: React.FC = () => {
 
   // Drawing controls
   const handleStartDrawing = () => {
+    // Disable drag mode when starting drawing
+    if (dragMode !== "none") {
+      setDragMode("none");
+    }
     setIsDrawing(true);
     notify({
       type: "info",
@@ -539,6 +585,11 @@ const TrackCreator: React.FC = () => {
 
   const handleStopDrawing = () => {
     setIsDrawing(false);
+    notify({
+      type: "info",
+      title: "Drawing Mode Disabled",
+      message: "Drawing mode has been disabled",
+    });
   };
 
   const clearTrack = () => {
@@ -650,9 +701,12 @@ const TrackCreator: React.FC = () => {
                         variant={isDrawing ? "default" : "outline"}
                         size="sm"
                         onClick={isDrawing ? handleStopDrawing : handleStartDrawing}
+                        disabled={dragMode !== "none"}
                         className={`${
                           isDrawing 
                             ? "bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/25" 
+                            : dragMode !== "none"
+                            ? "border-gray-500 text-gray-500 cursor-not-allowed"
                             : "border-gray-600 text-gray-300 hover:bg-gray-700/50"
                         } transition-all duration-200 text-xs sm:text-sm`}
                       >
@@ -712,10 +766,12 @@ const TrackCreator: React.FC = () => {
                         className={`${
                           dragMode === "points"
                             ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25"
+                            : isDrawing
+                            ? "border-gray-500 text-gray-500 cursor-not-allowed"
                             : "border-gray-600 text-gray-300 hover:bg-gray-700/50"
                         } transition-all duration-200`}
                         title="Drag Points"
-                        disabled={track.points.length === 0}
+                        disabled={track.points.length === 0 || isDrawing}
                       >
                         <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                         <span className="hidden sm:inline">Drag Points</span>
@@ -729,10 +785,12 @@ const TrackCreator: React.FC = () => {
                         className={`${
                           dragMode === "sectors"
                             ? "bg-yellow-600 hover:bg-yellow-700 text-white shadow-lg shadow-yellow-500/25"
+                            : isDrawing
+                            ? "border-gray-500 text-gray-500 cursor-not-allowed"
                             : "border-gray-600 text-gray-300 hover:bg-gray-700/50"
                         } transition-all duration-200`}
                         title="Drag Sectors"
-                        disabled={track.sectors.length === 0}
+                        disabled={track.sectors.length === 0 || isDrawing}
                       >
                         <Timer className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                         <span className="hidden sm:inline">Drag Sectors</span>
