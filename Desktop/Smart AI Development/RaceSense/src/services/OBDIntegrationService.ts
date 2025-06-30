@@ -93,6 +93,14 @@ class OBDIntegrationService {
   private lastCommand: string | null = null;
   private pendingCommandResolve: ((response: string) => void) | null = null;
 
+  // List of common OBD-II BLE service/characteristic UUID pairs
+  private static COMMON_OBD_UUIDS = [
+    { service: "0000fff0-0000-1000-8000-00805f9b34fb", characteristic: "0000fff2-0000-1000-8000-00805f9b34fb" },
+    { service: "0000ffe0-0000-1000-8000-00805f9b34fb", characteristic: "0000ffe1-0000-1000-8000-00805f9b34fb" },
+    { service: "6e400001-b5a3-f393-e0a9-e50e24dcca9e", characteristic: "6e400003-b5a3-f393-e0a9-e50e24dcca9e" }, // Nordic UART
+    { service: "1101", characteristic: "1101" },
+  ];
+
   constructor() {
     this.initializeSupportedParameters();
   }
@@ -259,43 +267,49 @@ class OBDIntegrationService {
           { namePrefix: "OBDII" },
           { namePrefix: "ELM327" },
           { namePrefix: "OBD" },
-          { services: ["0000fff0-0000-1000-8000-00805f9b34fb"] },
         ],
-        optionalServices: ["0000fff0-0000-1000-8000-00805f9b34fb"],
+        optionalServices: OBDIntegrationService.COMMON_OBD_UUIDS.map(u => u.service),
       });
       if (!this.device.gatt) {
         throw new Error("GATT not available on device");
       }
-      // Connect to GATT server
-      const server = await this.device.gatt.connect();
-      const service = await server.getPrimaryService(
-        "0000fff0-0000-1000-8000-00805f9b34fb",
-      );
-      this.characteristic = await service.getCharacteristic(
-        "0000fff2-0000-1000-8000-00805f9b34fb",
-      );
-      // Set up notifications for incoming data
-      await this.characteristic.startNotifications();
-      this.characteristic.addEventListener(
-        "characteristicvaluechanged",
-        (event) => {
-          this.handleBluetoothData(event);
-        },
-      );
-      // Initialize connection
-      await this.initializeOBDConnection();
-      this.isConnected = true;
-      this.notifyConnectionStatus(true);
-      return true;
+      // Try all common UUID pairs
+      let lastError: any = null;
+      for (const { service, characteristic } of OBDIntegrationService.COMMON_OBD_UUIDS) {
+        try {
+          const server = await this.device.gatt.connect();
+          const svc = await server.getPrimaryService(service);
+          this.characteristic = await svc.getCharacteristic(characteristic);
+          // Set up notifications for incoming data
+          await this.characteristic.startNotifications();
+          this.characteristic.addEventListener(
+            "characteristicvaluechanged",
+            (event) => {
+              this.handleBluetoothData(event);
+            },
+          );
+          // Initialize connection
+          await this.initializeOBDConnection();
+          this.isConnected = true;
+          this.notifyConnectionStatus(true);
+          return true;
+        } catch (err) {
+          lastError = err;
+          // Try next UUID pair
+        }
+      }
+      // If all fail, throw last error
+      throw lastError || new Error("No compatible OBD-II BLE service found");
     } catch (error: any) {
-      // Improved error handling for user-friendly messages
+      // Improved error handling for user-friendly messages and raw error
       let userMessage = "Bluetooth connection failed: " + error;
       if (error && error.name === 'NotFoundError') {
         userMessage = "No device selected. Please try again and select your OBD-II adapter.";
       } else if (error && error.name === 'NetworkError' && String(error).includes('Unsupported device')) {
         userMessage = "The selected device is not supported. Please use a BLE-compatible ELM327 adapter.";
+      } else if (error && error.message) {
+        userMessage += `\nRaw error: ${error.message}`;
       }
-      // TODO: In the future, scan for available services/characteristics and try common UUIDs if connection fails.
       this.handleError(userMessage);
       return false;
     }
