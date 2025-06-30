@@ -99,6 +99,10 @@ const TrackCreator: React.FC = () => {
   const [mapCenter, setMapCenter] = useState({ lat: 60.1699, lng: 24.9384 }); // Helsinki
   const [zoom, setZoom] = useState(12);
   const [mapTypeId, setMapTypeId] = useState<'roadmap' | 'satellite'>("roadmap");
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragMode, setDragMode] = useState<"points" | "sectors" | "none">("none");
+  const [selectedSector, setSelectedSector] = useState<any>(null);
+  const [sectorMarkersRef, setSectorMarkersRef] = useState<any[]>([]);
 
   // Load Google Maps
   useEffect(() => {
@@ -180,9 +184,52 @@ const TrackCreator: React.FC = () => {
         map: mapInstanceRef.current!,
         label: `${idx + 1}`,
         title: point.name || `Point ${idx + 1}`,
+        draggable: dragMode === "points",
+        icon: {
+          // @ts-ignore
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: point.type === "start" ? "#10b981" : 
+                    point.type === "finish" ? "#ef4444" : 
+                    point.type === "sector" ? "#f59e0b" : "#3b82f6",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
       });
+
+      // Add drag listeners
+      // @ts-ignore
+      marker.addListener("dragstart", () => {
+        setIsDragging(true);
+        setSelectedPoint(point);
+      });
+
+      // @ts-ignore
+      marker.addListener("dragend", (e: any) => {
+        setIsDragging(false);
+        if (e.latLng) {
+          updatePoint(point.id, {
+            lat: e.latLng.lat(),
+            lng: e.latLng.lng(),
+          });
+        }
+      });
+
+      // @ts-ignore
+      marker.addListener("click", () => {
+        setSelectedPoint(point);
+        if (dragMode === "none") {
+          setSelectedPoint(point);
+        }
+      });
+
       markersRef.current.push(marker);
     });
+
+    // Update sector markers
+    updateSectorMarkers();
+
     // Draw polyline
     if (polylineRef.current) polylineRef.current.setMap(null);
     if (track.points.length > 1) {
@@ -200,10 +247,92 @@ const TrackCreator: React.FC = () => {
     if (track.points.length > 0) {
       // @ts-ignore
       const bounds = new window.google.maps.LatLngBounds();
-      track.points.forEach(p => bounds.extend({ lat: p.lat, lng: p.lng }));
-      mapInstanceRef.current.fitBounds(bounds);
+      track.points.forEach(point => bounds.extend({ lat: point.lat, lng: point.lng }));
+      mapInstanceRef.current!.fitBounds(bounds);
     }
-  }, [track.points]);
+  }, [track.points, dragMode]);
+
+  // Update sector markers
+  const updateSectorMarkers = () => {
+    if (!mapInstanceRef.current) return;
+    
+    // Remove old sector markers
+    sectorMarkersRef.forEach(m => m.setMap(null));
+    const newSectorMarkers: any[] = [];
+
+    track.sectors.forEach((sector, idx) => {
+      // Start point marker
+      // @ts-ignore
+      const startMarker = new window.google.maps.Marker({
+        position: { lat: sector.startPoint.lat, lng: sector.startPoint.lng },
+        map: mapInstanceRef.current!,
+        label: `S${idx + 1}S`,
+        title: `Sector ${idx + 1} Start`,
+        draggable: dragMode === "sectors",
+        icon: {
+          // @ts-ignore
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 6,
+          fillColor: "#f59e0b",
+          fillOpacity: 0.8,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+      });
+
+      // End point marker
+      // @ts-ignore
+      const endMarker = new window.google.maps.Marker({
+        position: { lat: sector.endPoint.lat, lng: sector.endPoint.lng },
+        map: mapInstanceRef.current!,
+        label: `S${idx + 1}E`,
+        title: `Sector ${idx + 1} End`,
+        draggable: dragMode === "sectors",
+        icon: {
+          // @ts-ignore
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 6,
+          fillColor: "#f59e0b",
+          fillOpacity: 0.8,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+      });
+
+      // Add drag listeners for sector markers
+      // @ts-ignore
+      startMarker.addListener("dragstart", () => {
+        setIsDragging(true);
+        setSelectedSector({ ...sector, isStart: true });
+      });
+
+      // @ts-ignore
+      startMarker.addListener("dragend", (e: any) => {
+        setIsDragging(false);
+        if (e.latLng) {
+          updateSectorPosition(sector.id, "start", e.latLng.lat(), e.latLng.lng());
+        }
+      });
+
+      // @ts-ignore
+      endMarker.addListener("dragstart", () => {
+        setIsDragging(true);
+        setSelectedSector({ ...sector, isStart: false });
+      });
+
+      // @ts-ignore
+      endMarker.addListener("dragend", (e: any) => {
+        setIsDragging(false);
+        if (e.latLng) {
+          updateSectorPosition(sector.id, "end", e.latLng.lat(), e.latLng.lng());
+        }
+      });
+
+      newSectorMarkers.push(startMarker, endMarker);
+    });
+
+    setSectorMarkersRef(newSectorMarkers);
+  };
 
   // Calculate distance between two points using Haversine formula
   const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -279,10 +408,42 @@ const TrackCreator: React.FC = () => {
   const updatePoint = (pointId: string, updates: Partial<TrackPoint>) => {
     setTrack(prev => ({
       ...prev,
-      points: prev.points.map(p => 
-        p.id === pointId ? { ...p, ...updates } : p
-      ),
+      points: prev.points.map(p => p.id === pointId ? { ...p, ...updates } : p)
     }));
+  };
+
+  const updateSectorPosition = (sectorId: number, position: "start" | "end", lat: number, lng: number) => {
+    setTrack(prev => ({
+      ...prev,
+      sectors: prev.sectors.map(sector => {
+        if (sector.id === sectorId) {
+          const updatedSector = { ...sector };
+          if (position === "start") {
+            updatedSector.startPoint = { ...sector.startPoint, lat, lng };
+          } else {
+            updatedSector.endPoint = { ...sector.endPoint, lat, lng };
+          }
+          // Recalculate sector length
+          updatedSector.length = calculateDistance(
+            updatedSector.startPoint.lat,
+            updatedSector.startPoint.lng,
+            updatedSector.endPoint.lat,
+            updatedSector.endPoint.lng
+          );
+          return updatedSector;
+        }
+        return sector;
+      })
+    }));
+  };
+
+  const toggleDragMode = (mode: "points" | "sectors" | "none") => {
+    setDragMode(mode);
+    if (mode === "none") {
+      setIsDragging(false);
+      setSelectedPoint(null);
+      setSelectedSector(null);
+    }
   };
 
   // Create sector between two points
@@ -540,6 +701,43 @@ const TrackCreator: React.FC = () => {
                       </Button>
                     </div>
                     
+                    {/* Drag Controls */}
+                    <div className="flex gap-1">
+                      <Button
+                        variant={dragMode === "points" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => toggleDragMode(dragMode === "points" ? "none" : "points")}
+                        className={`${
+                          dragMode === "points"
+                            ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25"
+                            : "border-gray-600 text-gray-300 hover:bg-gray-700/50"
+                        } transition-all duration-200`}
+                        title="Drag Points"
+                        disabled={track.points.length === 0}
+                      >
+                        <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                        <span className="hidden sm:inline">Drag Points</span>
+                        <span className="sm:hidden">Points</span>
+                      </Button>
+                      
+                      <Button
+                        variant={dragMode === "sectors" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => toggleDragMode(dragMode === "sectors" ? "none" : "sectors")}
+                        className={`${
+                          dragMode === "sectors"
+                            ? "bg-yellow-600 hover:bg-yellow-700 text-white shadow-lg shadow-yellow-500/25"
+                            : "border-gray-600 text-gray-300 hover:bg-gray-700/50"
+                        } transition-all duration-200`}
+                        title="Drag Sectors"
+                        disabled={track.sectors.length === 0}
+                      >
+                        <Timer className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                        <span className="hidden sm:inline">Drag Sectors</span>
+                        <span className="sm:hidden">Sectors</span>
+                      </Button>
+                    </div>
+                    
                     {/* Secondary Controls */}
                     <div className="flex gap-1">
                       <Button
@@ -593,13 +791,43 @@ const TrackCreator: React.FC = () => {
                   style={{ zIndex: 1 }}
                 />
                 
-                {/* Drawing Mode Indicator */}
+                {/* Mode Indicators */}
                 {isDrawing && (
                   <div className="absolute top-2 sm:top-4 left-2 sm:left-4 bg-gradient-to-r from-green-600 to-green-500 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium z-10 shadow-lg shadow-green-500/25 animate-pulse">
                     <div className="flex items-center gap-1 sm:gap-2">
                       <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full animate-ping" />
                       <span className="hidden sm:inline">Drawing Mode Active</span>
                       <span className="sm:hidden">Drawing</span>
+                    </div>
+                  </div>
+                )}
+
+                {dragMode === "points" && (
+                  <div className="absolute top-2 sm:top-4 left-2 sm:left-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium z-10 shadow-lg shadow-blue-500/25 animate-pulse">
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full animate-ping" />
+                      <span className="hidden sm:inline">Drag Points Mode</span>
+                      <span className="sm:hidden">Drag Points</span>
+                    </div>
+                  </div>
+                )}
+
+                {dragMode === "sectors" && (
+                  <div className="absolute top-2 sm:top-4 left-2 sm:left-4 bg-gradient-to-r from-yellow-600 to-yellow-500 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium z-10 shadow-lg shadow-yellow-500/25 animate-pulse">
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full animate-ping" />
+                      <span className="hidden sm:inline">Drag Sectors Mode</span>
+                      <span className="sm:hidden">Drag Sectors</span>
+                    </div>
+                  </div>
+                )}
+
+                {isDragging && (
+                  <div className="absolute top-2 sm:top-4 right-2 sm:right-4 bg-gradient-to-r from-orange-600 to-orange-500 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium z-10 shadow-lg shadow-orange-500/25">
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full animate-ping" />
+                      <span className="hidden sm:inline">Dragging...</span>
+                      <span className="sm:hidden">Drag</span>
                     </div>
                   </div>
                 )}
@@ -629,6 +857,10 @@ const TrackCreator: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-purple-400 rounded-full" />
                           <span>Add timing sectors for analysis</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-400 rounded-full" />
+                          <span>Drag points and sectors to adjust positions</span>
                         </div>
                       </div>
                     </div>
@@ -986,6 +1218,50 @@ const TrackCreator: React.FC = () => {
                 </Card>
               </TabsContent>
             </Tabs>
+
+            {/* Drag Help */}
+            <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-3">
+                  <div className="p-2 bg-orange-500/20 rounded-lg">
+                    <Info className="h-4 w-4 sm:h-5 sm:w-5 text-orange-400" />
+                  </div>
+                  <span className="text-sm sm:text-base">Drag Controls</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs sm:text-sm text-gray-300 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0" />
+                    <div>
+                      <span className="font-medium text-blue-400">Drag Points:</span>
+                      <span className="text-gray-400"> Click "Drag Points" button, then drag any track point to reposition it</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full mt-1.5 flex-shrink-0" />
+                    <div>
+                      <span className="font-medium text-yellow-400">Drag Sectors:</span>
+                      <span className="text-gray-400"> Click "Drag Sectors" button, then drag sector start/end markers</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mt-1.5 flex-shrink-0" />
+                    <div>
+                      <span className="font-medium text-green-400">Drawing Mode:</span>
+                      <span className="text-gray-400"> Click "Start Drawing" to add new points by clicking on the map</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full mt-1.5 flex-shrink-0" />
+                    <div>
+                      <span className="font-medium text-purple-400">Visual Feedback:</span>
+                      <span className="text-gray-400"> Active modes show colored indicators on the map</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Actions */}
             <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
