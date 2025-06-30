@@ -36,7 +36,7 @@ import { Loader } from "@googlemaps/js-api-loader";
 import { Toggle } from "@/components/ui/toggle";
 
 // TODO: Insert your Google Maps API key below
-const GOOGLE_MAPS_API_KEY = "AIzaSyDpdm20ri9f0dTlT27yZpNSGFq3PSWE8zI";
+const GOOGLE_MAPS_API_KEY = "AIzaSyA5ondxplwoNnMztrYiYnr2Gs8Uwm-8MLk";
 
 interface TrackPoint {
   id: string;
