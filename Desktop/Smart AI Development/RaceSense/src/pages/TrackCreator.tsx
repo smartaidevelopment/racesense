@@ -125,15 +125,7 @@ const TrackCreator: React.FC = () => {
         fullscreenControl: false,
       });
       mapInstanceRef.current = map;
-      // Map click to add points
-      // @ts-ignore
-      map.addListener("click", (e: any) => {
-        console.log("Map clicked:", { isDrawing, currentMode, latLng: e.latLng });
-        if (isDrawing && e.latLng) {
-          console.log("Adding point at:", e.latLng.lat(), e.latLng.lng());
-          addPoint(e.latLng.lat(), e.latLng.lng());
-        }
-      });
+      
       // Zoom/center listeners
       // @ts-ignore
       map.addListener("zoom_changed", () => setZoom(map.getZoom() || 12));
@@ -274,6 +266,32 @@ const TrackCreator: React.FC = () => {
   useEffect(() => {
     console.log("Drawing state changed:", { isDrawing, currentMode, dragMode });
   }, [isDrawing, currentMode, dragMode]);
+
+  // Handle map click events for drawing
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    
+    console.log("Setting up map click listener, isDrawing:", isDrawing);
+    
+    // @ts-ignore
+    const clickListener = mapInstanceRef.current.addListener("click", (e: any) => {
+      console.log("Map clicked:", { isDrawing, currentMode, latLng: e.latLng });
+      if (isDrawing && e.latLng) {
+        console.log("Adding point at:", e.latLng.lat(), e.latLng.lng());
+        addPoint(e.latLng.lat(), e.latLng.lng());
+      } else {
+        console.log("Map clicked but not in drawing mode or no latLng");
+      }
+    });
+    
+    // Cleanup function to remove the listener
+    return () => {
+      if (mapInstanceRef.current) {
+        // @ts-ignore
+        window.google.maps.event.removeListener(clickListener);
+      }
+    };
+  }, [isDrawing, currentMode]); // This effect will re-run when isDrawing or currentMode changes
 
 
 
@@ -914,6 +932,19 @@ const TrackCreator: React.FC = () => {
                         title="Clear Track"
                       >
                         <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          console.log("Test button clicked - adding test point");
+                          addPoint(60.1699, 24.9384); // Helsinki coordinates
+                        }}
+                        className="text-blue-400 border-blue-400/50 hover:bg-blue-400/10 transition-all duration-200"
+                        title="Test Add Point"
+                      >
+                        <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                     </div>
                   </div>
