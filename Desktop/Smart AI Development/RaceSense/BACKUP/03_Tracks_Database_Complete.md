@@ -13,6 +13,14 @@ This is the comprehensive racing tracks database implemented for RaceSense, cont
 - **Advanced Search & Filtering**: By type, country, category, FIA grade
 - **Professional Integration**: Compatible with lap timing and telemetry services
 
+## Track Creator (Sector-Only)
+
+- The TrackCreator UI now supports **sector-only** editing. Users can add, edit, and remove sectors directly on the map.
+- The previous point-based editing workflow has been removed for simplicity and clarity.
+- Each sector is defined by a start and end point, which can be dragged and adjusted on the map.
+- The UI displays only sector information and statistics.
+- This change streamlines the workflow for professional racing analysis and session planning.
+
 ## Files Included:
 
 ### src/types/track.ts

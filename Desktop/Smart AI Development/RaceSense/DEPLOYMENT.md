@@ -1,5 +1,7 @@
 # RaceSense Production Deployment Guide
 
+> **Note:** The TrackCreator is now sector-only. Users can add, edit, and remove sectors directly on the map. Point-based editing is no longer supported. See BACKUP/03_Tracks_Database_Complete.md for details.
+
 ## 🏁 Overview
 
 RaceSense is a professional racing telemetry platform built with modern web technologies. This guide covers comprehensive production deployment strategies across multiple platforms.
