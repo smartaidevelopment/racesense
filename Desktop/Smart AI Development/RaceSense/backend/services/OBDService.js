@@ -10,9 +10,27 @@ class OBDService extends EventEmitter {
     this.dataInterval = null;
     this.reconnectInterval = null;
     this.autoReconnect = false;
+    this._connectInProgress = false;
+    this._abortConnect = false;
+  }
+
+  abortConnect() {
+    if (this._connectInProgress) {
+      this._abortConnect = true;
+      if (this.port && this.port.isOpen) {
+        this.port.close(() => {});
+      }
+      this.emit('connect-aborted');
+    }
   }
 
   async connect(portPath = '/dev/tty.usbserial') {
+    if (this._connectInProgress) {
+      this.abortConnect();
+      throw new Error('Previous OBD connect attempt aborted. Try again.');
+    }
+    this._connectInProgress = true;
+    this._abortConnect = false;
     try {
       // Disconnect existing connection
       if (this.port) {
@@ -30,9 +48,15 @@ class OBDService extends EventEmitter {
 
       return new Promise((resolve, reject) => {
         this.port.open((err) => {
+          if (this._abortConnect) {
+            this._connectInProgress = false;
+            reject(new Error('OBD connect aborted by user.'));
+            return;
+          }
           if (err) {
             console.error('OBD connection error:', err);
-            reject(err);
+            this._connectInProgress = false;
+            reject(new Error('OBD connection error: ' + err.message));
             return;
           }
 
@@ -45,26 +69,31 @@ class OBDService extends EventEmitter {
             .then(() => {
               this.startDataCollection();
               this.emit('connected', portPath);
+              this._connectInProgress = false;
               resolve(true);
             })
             .catch((error) => {
               console.error('OBD initialization error:', error);
-              reject(error);
+              this._connectInProgress = false;
+              reject(new Error('OBD initialization error: ' + error.message));
             });
         });
 
         this.port.on('error', (err) => {
           console.error('OBD port error:', err);
-          this.handleError(err);
+          this._connectInProgress = false;
+          this.handleError(new Error('OBD port error: ' + err.message));
         });
 
         this.port.on('close', () => {
           console.log('OBD port closed');
           this.handleDisconnection();
+          this._connectInProgress = false;
         });
       });
     } catch (error) {
       console.error('OBD connection failed:', error);
+      this._connectInProgress = false;
       throw error;
     }
   }
@@ -93,7 +122,7 @@ class OBDService extends EventEmitter {
     // Test connection
     const response = await this.sendCommand('0100');
     if (!response || response.includes('NO DATA')) {
-      throw new Error('OBD adapter not responding');
+      throw new Error('OBD adapter not responding or no data received');
     }
     
     console.log('OBD adapter initialized successfully');
@@ -106,13 +135,13 @@ class OBDService extends EventEmitter {
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error('OBD command timeout'));
+        reject(new Error('OBD command timeout for command: ' + command));
       }, 5000);
 
       this.port.write(command + '\r', (err) => {
         if (err) {
           clearTimeout(timeout);
-          reject(err);
+          reject(new Error('OBD write error: ' + err.message));
           return;
         }
 
@@ -144,7 +173,7 @@ class OBDService extends EventEmitter {
             this.emit('data', vehicleData);
           }
         } catch (error) {
-          console.error('OBD data collection error:', error);
+          console.error('OBD data collection error:', error.message);
         }
       }
     }, 100); // 10Hz data rate
@@ -198,7 +227,7 @@ class OBDService extends EventEmitter {
 
       return data;
     } catch (error) {
-      console.error('Error reading vehicle data:', error);
+      console.error('Error reading vehicle data:', error.message);
       return null;
     }
   }
@@ -269,9 +298,13 @@ class OBDService extends EventEmitter {
     }
 
     if (this.port) {
+      // Remove all listeners
+      this.port.removeAllListeners('data');
+      this.port.removeAllListeners('error');
+      this.port.removeAllListeners('close');
       this.port.close((err) => {
         if (err) {
-          console.error('Error closing OBD port:', err);
+          console.error('Error closing OBD port:', err.message);
         } else {
           console.log('OBD port closed successfully');
         }
@@ -281,6 +314,8 @@ class OBDService extends EventEmitter {
 
     this.currentPort = null;
     this.emit('disconnected');
+    this._connectInProgress = false;
+    this._abortConnect = false;
   }
 
   handleError(error) {
@@ -299,6 +334,8 @@ class OBDService extends EventEmitter {
     if (this.autoReconnect) {
       this.scheduleReconnect();
     }
+    this._connectInProgress = false;
+    this._abortConnect = false;
   }
 
   scheduleReconnect() {

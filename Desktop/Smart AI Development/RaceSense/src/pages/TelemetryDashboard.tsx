@@ -87,7 +87,6 @@ interface TelemetryState {
   obdError: string | null;
   isConnecting: boolean;
   connectError: string | null;
-  isDemoMode: boolean;
 }
 
 class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
@@ -97,6 +96,11 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
   private obdDataUnsubscribe: (() => void) | null = null;
   private obdConnectionUnsubscribe: (() => void) | null = null;
   private obdErrorUnsubscribe: (() => void) | null = null;
+  private bluetoothAbortController: AbortController | null = null;
+  private serialAbortController: AbortController | null = null;
+  private modalRef = React.createRef<HTMLDivElement>();
+  private lastActiveElement: HTMLElement | null = null;
+  private autoReopenTimeout: NodeJS.Timeout | null = null;
 
   constructor(props: {}) {
     super(props);
@@ -136,7 +140,6 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
       obdError: null,
       isConnecting: false,
       connectError: null,
-      isDemoMode: false,
     };
   }
 
@@ -178,25 +181,7 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
     // Subscribe to OBD connection status
     this.obdConnectionUnsubscribe = obdIntegrationService.onConnectionChange(
       (connected) => {
-        this.setState({ obdConnected: connected, isConnecting: false });
-        if (connected && this.state.showOBDConnectionDialog) {
-          setTimeout(() => this.setState({ showOBDConnectionDialog: false }), 1200);
-        }
-
-        if (connected) {
-          notify.success(
-            "OBD-II Connected",
-            "Real vehicle telemetry is now active!",
-            { duration: 4000 },
-          );
-        } else {
-          notify.info(
-            "OBD-II Disconnected",
-            "Switched back to simulated telemetry data",
-            { duration: 3000 },
-          );
-          this.setState({ useRealTelemetry: false });
-        }
+        this.handleOBDConnectionChange(connected);
       },
     );
 
@@ -205,6 +190,9 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
       this.setState({ obdError: error });
       notify.error("OBD Connection Error", error, { duration: 6000 });
     });
+
+    // Focus trap for modal
+    document.addEventListener("keydown", this.handleKeyDown);
   }
 
   componentWillUnmount() {
@@ -224,6 +212,8 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
       this.obdErrorUnsubscribe();
     }
     this.stopTelemetryUpdates();
+    document.removeEventListener("keydown", this.handleKeyDown);
+    if (this.autoReopenTimeout) clearTimeout(this.autoReopenTimeout);
   }
 
   startTelemetryUpdates = () => {
@@ -593,24 +583,67 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
     });
   };
 
-  // OBD-II Connection Methods
+  // Focus trap and Esc to close
+  handleKeyDown = (e: KeyboardEvent) => {
+    if (this.state.showOBDConnectionDialog) {
+      if (e.key === "Escape") {
+        this.dismissOBDDialog();
+      } else if (e.key === "Tab" && this.modalRef.current) {
+        const focusable = this.modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      }
+    }
+  };
+
+  // Browser capability check
+  getBluetoothSupport() {
+    return typeof navigator !== 'undefined' && 'bluetooth' in navigator;
+  }
+  getSerialSupport() {
+    return typeof navigator !== 'undefined' && 'serial' in navigator;
+  }
+
+  // Abort logic for OBD connection attempts
   connectOBDBluetooth = async () => {
+    if (!this.getBluetoothSupport()) {
+      this.setState({ connectError: "Web Bluetooth is not supported in this browser." });
+      return;
+    }
     this.setState({ isConnecting: true, connectError: null });
+    this.bluetoothAbortController = new AbortController();
     try {
       const connected = await obdIntegrationService.connectBluetooth();
       if (connected) {
         this.setState({ isConnecting: false, connectError: null });
-        // Dialog will auto-close on obdConnected event
       } else {
         this.setState({ isConnecting: false, connectError: "Failed to connect to Bluetooth OBD adapter." });
       }
-    } catch (error) {
-      this.setState({ isConnecting: false, connectError: String(error) });
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        this.setState({ isConnecting: false, connectError: "Bluetooth connection was cancelled." });
+      } else {
+        this.setState({ isConnecting: false, connectError: String(error) });
+      }
     }
   };
 
   connectOBDSerial = async () => {
+    if (!this.getSerialSupport()) {
+      this.setState({ connectError: "Web Serial is not supported in this browser." });
+      return;
+    }
     this.setState({ isConnecting: true, connectError: null });
+    this.serialAbortController = new AbortController();
     try {
       const connected = await obdIntegrationService.connectSerial();
       if (connected) {
@@ -618,24 +651,13 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
       } else {
         this.setState({ isConnecting: false, connectError: "Failed to connect to USB/Serial OBD adapter." });
       }
-    } catch (error) {
-      this.setState({ isConnecting: false, connectError: String(error) });
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        this.setState({ isConnecting: false, connectError: "Serial connection was cancelled." });
+      } else {
+        this.setState({ isConnecting: false, connectError: String(error) });
+      }
     }
-  };
-
-  startOBDSimulation = () => {
-    obdIntegrationService.startSimulationMode();
-    this.setState({
-      showOBDConnectionDialog: false,
-      obdConnected: false,
-      useRealTelemetry: true,
-      isDemoMode: true,
-    });
-    notify.success(
-      "OBD Simulation Started",
-      "Using realistic simulated vehicle telemetry data",
-      { duration: 4000 },
-    );
   };
 
   disconnectOBD = async () => {
@@ -646,14 +668,56 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
       obdData: null,
       vehicleInfo: null,
     });
+    if (this.autoReopenTimeout) clearTimeout(this.autoReopenTimeout);
   };
 
   showOBDConnectionDialog = () => {
-    this.setState({ showOBDConnectionDialog: true });
+    this.lastActiveElement = document.activeElement as HTMLElement;
+    this.setState({ showOBDConnectionDialog: true }, () => {
+      setTimeout(() => {
+        if (this.modalRef.current) {
+          const focusable = this.modalRef.current.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusable.length) focusable[0].focus();
+        }
+      }, 0);
+    });
   };
 
   dismissOBDDialog = () => {
-    this.setState({ showOBDConnectionDialog: false });
+    if (this.bluetoothAbortController) this.bluetoothAbortController.abort();
+    if (this.serialAbortController) this.serialAbortController.abort();
+    this.setState({ showOBDConnectionDialog: false, isConnecting: false });
+    if (this.lastActiveElement) this.lastActiveElement.focus();
+  };
+
+  // Auto-reopen dialog on disconnect
+  handleOBDConnectionChange = (connected: boolean) => {
+    this.setState({ obdConnected: connected, isConnecting: false });
+    if (connected && this.state.showOBDConnectionDialog) {
+      setTimeout(() => this.setState({ showOBDConnectionDialog: false }), 1200);
+    }
+    if (connected) {
+      notify.success(
+        "OBD-II Connected",
+        "Real vehicle telemetry is now active!",
+        { duration: 4000 },
+      );
+    } else {
+      notify.info(
+        "OBD-II Disconnected",
+        "Switched back to simulated telemetry data",
+        { duration: 3000 },
+      );
+      this.setState({ useRealTelemetry: false });
+      // Auto-reopen dialog after disconnect
+      if (!this.state.showOBDConnectionDialog) {
+        this.autoReopenTimeout = setTimeout(() => {
+          this.showOBDConnectionDialog();
+        }, 1000);
+      }
+    }
   };
 
   render() {
@@ -679,22 +743,18 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
       obdError,
       isConnecting,
       connectError,
-      isDemoMode,
     } = this.state;
 
-    // Show Demo Mode banner if active
-    const demoBanner = isDemoMode ? (
-      <div className="w-full bg-yellow-400 text-black text-center py-2 font-semibold text-sm mb-4 rounded shadow">
-        Demo Mode: No real car connected. Telemetry is simulated.
-      </div>
-    ) : null;
+    // Browser support warnings
+    const bluetoothSupported = this.getBluetoothSupport();
+    const serialSupported = this.getSerialSupport();
 
-    // If not connected and not in demo mode, show a message and disable telemetry
-    if (!obdConnected && !isDemoMode) {
+    // If not connected, show a message and disable telemetry
+    if (!obdConnected) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
           <div className="text-2xl font-bold mb-4">No Vehicle Connected</div>
-          <div className="text-muted-foreground mb-6">Connect an OBD-II device or start Demo Mode to view telemetry.</div>
+          <div className="text-muted-foreground mb-6">Connect an OBD-II device to view telemetry.</div>
           <div className="flex gap-4">
             <RacingButton
               variant="racing"
@@ -703,12 +763,6 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
             >
               Connect Vehicle
             </RacingButton>
-            <RacingButton
-              variant="outline"
-              onClick={this.startOBDSimulation}
-            >
-              Start Demo Mode
-            </RacingButton>
           </div>
         </div>
       );
@@ -716,7 +770,6 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
 
     return (
       <div className="space-y-8">
-        {demoBanner}
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -1549,30 +1602,49 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
 
         {/* OBD-II Connection Dialog */}
         {showOBDConnectionDialog && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="obd-dialog-title"
+            ref={this.modalRef}
+          >
             <Card className="max-w-2xl w-full p-6 border-racing-blue/30">
               <div className="space-y-6">
                 <div className="text-center">
                   <div className="flex justify-center mb-4">
                     <Car className="h-12 w-12 text-racing-blue" />
                   </div>
-                  <h3 className="font-bold text-xl mb-2">
+                  <h3 id="obd-dialog-title" className="font-bold text-xl mb-2">
                     Connect Vehicle Telemetry
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Connect your vehicle's OBD-II port for real engine
-                    telemetry data
+                    Connect your vehicle's OBD-II port for real engine telemetry data
                   </p>
                 </div>
-                {this.state.isConnecting && (
-                  <div className="flex flex-col items-center gap-2 mb-2">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-4 border-b-4 border-racing-blue mb-2" />
-                    <span className="text-racing-blue font-medium">Connecting...</span>
+                {/* Browser support warnings */}
+                {(!bluetoothSupported || !serialSupported) && (
+                  <div className="p-2 bg-yellow-100 border border-yellow-300 rounded text-yellow-800 text-sm text-center mb-2">
+                    { !bluetoothSupported && <div>⚠️ Web Bluetooth is not supported in this browser.</div> }
+                    { !serialSupported && <div>⚠️ Web Serial is not supported in this browser.</div> }
+                    <div>Try Chrome or Edge on desktop for best compatibility.</div>
                   </div>
                 )}
                 {this.state.connectError && (
                   <div className="p-2 bg-racing-red/10 border border-racing-red/30 rounded text-racing-red text-sm text-center mb-2">
                     {this.state.connectError}
+                    <div className="mt-2">
+                      <RacingButton
+                        variant="outline"
+                        onClick={this.state.isConnecting ? undefined : () => {
+                          if (this.state.connectError?.includes('Bluetooth')) this.connectOBDBluetooth();
+                          else if (this.state.connectError?.includes('Serial')) this.connectOBDSerial();
+                        }}
+                        disabled={this.state.isConnecting}
+                      >
+                        Retry
+                      </RacingButton>
+                    </div>
                   </div>
                 )}
                 {this.state.obdConnected && !this.state.isConnecting && (
@@ -1630,31 +1702,6 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
                         <div>✓ Stable connection</div>
                         <div>✓ Faster data rates</div>
                         <div>✓ No pairing required</div>
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* Simulation Mode */}
-                  <Card
-                    className={`p-4 border-racing-yellow/20 hover:border-racing-yellow/40 transition-colors cursor-pointer ${this.state.isConnecting ? 'opacity-50 pointer-events-none' : ''}`}
-                    onClick={this.startOBDSimulation}
-                  >
-                    <div className="text-center space-y-3">
-                      <div className="flex justify-center">
-                        <Settings className="h-8 w-8 text-racing-yellow" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-racing-yellow">
-                          Demo Mode
-                        </h4>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Realistic simulated data
-                        </p>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        <div>✓ No hardware needed</div>
-                        <div>✓ Realistic telemetry</div>
-                        <div>✓ Perfect for testing</div>
                       </div>
                     </div>
                   </Card>

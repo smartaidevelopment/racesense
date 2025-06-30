@@ -67,8 +67,14 @@ io.on('connection', (socket) => {
         });
       }
     } catch (error) {
-      socket.emit('obd-status', { connected: false, error: error.message });
+      socket.emit('obd-status', { connected: false, error: error && error.message ? error.message : String(error) });
     }
+  });
+
+  // Allow client to abort/cancel a pending OBD connection
+  socket.on('cancel-obd-connect', () => {
+    obdService.abortConnect();
+    socket.emit('obd-status', { connected: false, error: 'OBD connection aborted by user.' });
   });
 
   socket.on('connect-gps', async () => {
@@ -217,7 +223,17 @@ app.post('/api/hardware/connect', async (req, res) => {
 
     res.json({ success: result });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error && error.message ? error.message : String(error) });
+  }
+});
+
+// REST endpoint to abort/cancel a pending OBD connection
+app.post('/api/hardware/cancel-obd-connect', (req, res) => {
+  try {
+    obdService.abortConnect();
+    res.json({ success: true, error: 'OBD connection aborted by user.' });
+  } catch (error) {
+    res.status(500).json({ error: error && error.message ? error.message : String(error) });
   }
 });
 
@@ -228,7 +244,8 @@ app.post('/api/hardware/disconnect', async (req, res) => {
     switch (type) {
       case 'obd':
         obdService.disconnect();
-        break;
+        res.json({ success: true, error: null });
+        return;
       case 'gps':
         gpsService.disconnect();
         break;
@@ -248,9 +265,9 @@ app.post('/api/hardware/disconnect', async (req, res) => {
         return res.status(400).json({ error: 'Invalid hardware type' });
     }
 
-    res.json({ success: true });
+    res.json({ success: true, error: null });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error && error.message ? error.message : String(error) });
   }
 });
 
