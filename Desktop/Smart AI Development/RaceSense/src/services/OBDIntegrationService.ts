@@ -253,7 +253,6 @@ class OBDIntegrationService {
       if (!(navigator as any).bluetooth) {
         throw new Error("Web Bluetooth not supported in this browser");
       }
-
       // Request Bluetooth device
       this.device = await (navigator as any).bluetooth.requestDevice({
         filters: [
@@ -264,11 +263,9 @@ class OBDIntegrationService {
         ],
         optionalServices: ["0000fff0-0000-1000-8000-00805f9b34fb"],
       });
-
       if (!this.device.gatt) {
         throw new Error("GATT not available on device");
       }
-
       // Connect to GATT server
       const server = await this.device.gatt.connect();
       const service = await server.getPrimaryService(
@@ -277,7 +274,6 @@ class OBDIntegrationService {
       this.characteristic = await service.getCharacteristic(
         "0000fff2-0000-1000-8000-00805f9b34fb",
       );
-
       // Set up notifications for incoming data
       await this.characteristic.startNotifications();
       this.characteristic.addEventListener(
@@ -286,16 +282,21 @@ class OBDIntegrationService {
           this.handleBluetoothData(event);
         },
       );
-
       // Initialize connection
       await this.initializeOBDConnection();
-
       this.isConnected = true;
       this.notifyConnectionStatus(true);
-
       return true;
-    } catch (error) {
-      this.handleError(`Bluetooth connection failed: ${error}`);
+    } catch (error: any) {
+      // Improved error handling for user-friendly messages
+      let userMessage = "Bluetooth connection failed: " + error;
+      if (error && error.name === 'NotFoundError') {
+        userMessage = "No device selected. Please try again and select your OBD-II adapter.";
+      } else if (error && error.name === 'NetworkError' && String(error).includes('Unsupported device')) {
+        userMessage = "The selected device is not supported. Please use a BLE-compatible ELM327 adapter.";
+      }
+      // TODO: In the future, scan for available services/characteristics and try common UUIDs if connection fails.
+      this.handleError(userMessage);
       return false;
     }
   }
