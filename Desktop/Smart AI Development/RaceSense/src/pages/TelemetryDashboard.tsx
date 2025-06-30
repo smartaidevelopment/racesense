@@ -46,6 +46,7 @@ import {
   Usb,
   Car,
   Settings,
+  CheckCircle,
 } from "lucide-react";
 
 interface TelemetryData {
@@ -84,6 +85,8 @@ interface TelemetryState {
   showOBDConnectionDialog: boolean;
   useRealTelemetry: boolean;
   obdError: string | null;
+  isConnecting: boolean;
+  connectError: string | null;
 }
 
 class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
@@ -130,6 +133,8 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
       showOBDConnectionDialog: false,
       useRealTelemetry: false,
       obdError: null,
+      isConnecting: false,
+      connectError: null,
     };
   }
 
@@ -171,7 +176,10 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
     // Subscribe to OBD connection status
     this.obdConnectionUnsubscribe = obdIntegrationService.onConnectionChange(
       (connected) => {
-        this.setState({ obdConnected: connected });
+        this.setState({ obdConnected: connected, isConnecting: false });
+        if (connected && this.state.showOBDConnectionDialog) {
+          setTimeout(() => this.setState({ showOBDConnectionDialog: false }), 1200);
+        }
 
         if (connected) {
           notify.success(
@@ -588,50 +596,31 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
 
   // OBD-II Connection Methods
   connectOBDBluetooth = async () => {
+    this.setState({ isConnecting: true, connectError: null });
     try {
-      notify.info(
-        "Connecting to OBD-II",
-        "Please select your Bluetooth OBD adapter...",
-        { duration: 3000 },
-      );
-
       const connected = await obdIntegrationService.connectBluetooth();
       if (connected) {
-        this.setState({
-          showOBDConnectionDialog: false,
-          vehicleInfo: obdIntegrationService.getCurrentVehicleInfo(),
-        });
+        this.setState({ isConnecting: false, connectError: null });
+        // Dialog will auto-close on obdConnected event
+      } else {
+        this.setState({ isConnecting: false, connectError: "Failed to connect to Bluetooth OBD adapter." });
       }
     } catch (error) {
-      notify.error(
-        "Bluetooth Connection Failed",
-        `Could not connect to OBD adapter: ${error}`,
-        { duration: 6000 },
-      );
+      this.setState({ isConnecting: false, connectError: String(error) });
     }
   };
 
   connectOBDSerial = async () => {
+    this.setState({ isConnecting: true, connectError: null });
     try {
-      notify.info(
-        "Connecting to OBD-II",
-        "Please select your USB OBD adapter...",
-        { duration: 3000 },
-      );
-
       const connected = await obdIntegrationService.connectSerial();
       if (connected) {
-        this.setState({
-          showOBDConnectionDialog: false,
-          vehicleInfo: obdIntegrationService.getCurrentVehicleInfo(),
-        });
+        this.setState({ isConnecting: false, connectError: null });
+      } else {
+        this.setState({ isConnecting: false, connectError: "Failed to connect to USB/Serial OBD adapter." });
       }
     } catch (error) {
-      notify.error(
-        "USB Connection Failed",
-        `Could not connect to OBD adapter: ${error}`,
-        { duration: 6000 },
-      );
+      this.setState({ isConnecting: false, connectError: String(error) });
     }
   };
 
@@ -689,6 +678,8 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
       showOBDConnectionDialog,
       useRealTelemetry,
       obdError,
+      isConnecting,
+      connectError,
     } = this.state;
 
     return (
@@ -1033,7 +1024,7 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
               {gpsPermissionStatus?.state === "denied" && (
                 <RacingButton
                   variant="outline"
-                  size="xs"
+                  size="sm"
                   onClick={this.retryGPSAccess}
                   className="text-xs py-1 px-2 h-6"
                 >
@@ -1054,7 +1045,7 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
               {!this.state.obdConnected && (
                 <RacingButton
                   variant="outline"
-                  size="xs"
+                  size="sm"
                   onClick={this.showOBDConnectionDialog}
                   className="text-xs py-1 px-2 h-6"
                 >
@@ -1540,11 +1531,29 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
                     telemetry data
                   </p>
                 </div>
-
+                {this.state.isConnecting && (
+                  <div className="flex flex-col items-center gap-2 mb-2">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-4 border-b-4 border-racing-blue mb-2" />
+                    <span className="text-racing-blue font-medium">Connecting...</span>
+                  </div>
+                )}
+                {this.state.connectError && (
+                  <div className="p-2 bg-racing-red/10 border border-racing-red/30 rounded text-racing-red text-sm text-center mb-2">
+                    {this.state.connectError}
+                  </div>
+                )}
+                {this.state.obdConnected && !this.state.isConnecting && (
+                  <div className="flex flex-col items-center gap-2 mb-2">
+                    <div className="h-8 w-8 rounded-full bg-racing-green flex items-center justify-center">
+                      <CheckCircle className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-racing-green font-medium">OBD-II Connected!</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Bluetooth Connection */}
                   <Card
-                    className="p-4 border-racing-blue/20 hover:border-racing-blue/40 transition-colors cursor-pointer"
+                    className={`p-4 border-racing-blue/20 hover:border-racing-blue/40 transition-colors cursor-pointer ${this.state.isConnecting ? 'opacity-50 pointer-events-none' : ''}`}
                     onClick={this.connectOBDBluetooth}
                   >
                     <div className="text-center space-y-3">
@@ -1569,7 +1578,7 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
 
                   {/* USB/Serial Connection */}
                   <Card
-                    className="p-4 border-racing-green/20 hover:border-racing-green/40 transition-colors cursor-pointer"
+                    className={`p-4 border-racing-green/20 hover:border-racing-green/40 transition-colors cursor-pointer ${this.state.isConnecting ? 'opacity-50 pointer-events-none' : ''}`}
                     onClick={this.connectOBDSerial}
                   >
                     <div className="text-center space-y-3">
@@ -1594,7 +1603,7 @@ class TelemetryDashboardPage extends React.Component<{}, TelemetryState> {
 
                   {/* Simulation Mode */}
                   <Card
-                    className="p-4 border-racing-yellow/20 hover:border-racing-yellow/40 transition-colors cursor-pointer"
+                    className={`p-4 border-racing-yellow/20 hover:border-racing-yellow/40 transition-colors cursor-pointer ${this.state.isConnecting ? 'opacity-50 pointer-events-none' : ''}`}
                     onClick={this.startOBDSimulation}
                   >
                     <div className="text-center space-y-3">
