@@ -104,6 +104,8 @@ const TrackCreator: React.FC = () => {
   const [selectedSector, setSelectedSector] = useState<any>(null);
   const [sectorMarkersRef, setSectorMarkersRef] = useState<any[]>([]);
   const [showInstructions, setShowInstructions] = useState(true);
+  const [sectorStartPoint, setSectorStartPoint] = useState<string>("");
+  const [sectorEndPoint, setSectorEndPoint] = useState<string>("");
 
   // Load Google Maps
   useEffect(() => {
@@ -126,9 +128,7 @@ const TrackCreator: React.FC = () => {
       // Map click to add points
       // @ts-ignore
       map.addListener("click", (e: any) => {
-        console.log("Map clicked:", { isDrawing, dragMode, latLng: e.latLng });
-        if (isDrawing && e.latLng && dragMode === "none") {
-          console.log("Adding point at:", e.latLng.lat(), e.latLng.lng());
+        if (isDrawing && e.latLng) {
           addPoint(e.latLng.lat(), e.latLng.lng());
         }
       });
@@ -268,10 +268,7 @@ const TrackCreator: React.FC = () => {
     updateSectorMarkers();
   }, [dragMode]);
 
-  // Debug drawing state changes
-  useEffect(() => {
-    console.log("Drawing state changed:", { isDrawing, dragMode });
-  }, [isDrawing, dragMode]);
+
 
   // Update sector markers
   const updateSectorMarkers = () => {
@@ -392,25 +389,29 @@ const TrackCreator: React.FC = () => {
 
   // Add point
   const addPoint = (lat: number, lng: number) => {
-    console.log("addPoint called with:", lat, lng);
     const newPoint: TrackPoint = {
       id: Date.now().toString(),
       lat,
       lng,
-      type: "corner",
-      name: `Point ${track.points.length + 1}`,
+      type: currentMode === "start-finish" ? "start" : "corner",
+      name: currentMode === "start-finish" ? "Start/Finish" : `Point ${track.points.length + 1}`,
       order: track.points.length,
     };
-    console.log("New point:", newPoint);
+    
     setTrack(prev => {
-      const newTrack = { ...prev, points: [...prev.points, newPoint] };
-      console.log("Updated track:", newTrack);
-      return newTrack;
+      const newPoints = [...prev.points, newPoint];
+      const newLength = calculateTrackLength(newPoints);
+      return {
+        ...prev,
+        points: newPoints,
+        length: newLength,
+      };
     });
+    
     notify({
-      type: "racing",
+      type: "success",
       title: "Point Added",
-      message: `Added point at ${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+      message: `Added ${newPoint.name} at ${lat.toFixed(6)}, ${lng.toFixed(6)}`,
     });
   };
 
@@ -539,6 +540,47 @@ const TrackCreator: React.FC = () => {
     });
   };
 
+  // Handle sector creation from UI
+  const handleCreateSector = () => {
+    if (!sectorStartPoint || !sectorEndPoint) {
+      notify({
+        type: "error",
+        title: "Missing Points",
+        message: "Please select both start and end points",
+      });
+      return;
+    }
+
+    if (sectorStartPoint === sectorEndPoint) {
+      notify({
+        type: "error",
+        title: "Invalid Sector",
+        message: "Start and end points must be different",
+      });
+      return;
+    }
+
+    createSector(sectorStartPoint, sectorEndPoint);
+    
+    // Clear the form
+    setSectorStartPoint("");
+    setSectorEndPoint("");
+  };
+
+  // Remove sector
+  const removeSector = (sectorId: number) => {
+    setTrack(prev => ({
+      ...prev,
+      sectors: prev.sectors.filter(s => s.id !== sectorId),
+    }));
+
+    notify({
+      type: "warning",
+      title: "Sector Removed",
+      message: "Sector has been removed from the track",
+    });
+  };
+
   // Save track
   const handleSaveTrack = () => {
     if (!track.name || !track.city || !track.country) {
@@ -594,7 +636,6 @@ const TrackCreator: React.FC = () => {
 
   // Drawing controls
   const handleStartDrawing = () => {
-    console.log("handleStartDrawing called");
     // Disable drag mode when starting drawing
     if (dragMode !== "none") {
       setDragMode("none");
@@ -605,9 +646,8 @@ const TrackCreator: React.FC = () => {
       });
     }
     setIsDrawing(true);
-    console.log("Drawing mode set to true");
     notify({
-      type: "info",
+      type: "success",
       title: "Drawing Mode Active",
       message: "Click on the map to add track points",
     });
@@ -1097,36 +1137,37 @@ const TrackCreator: React.FC = () => {
 
               {/* Points Tab */}
               <TabsContent value="points" className="space-y-4">
+                {/* Drawing Controls */}
                 <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle className="text-white flex items-center gap-3">
-                      <div className="p-2 bg-blue-500/20 rounded-lg">
-                        <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
+                      <div className="p-2 bg-green-500/20 rounded-lg">
+                        <Circle className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" />
                       </div>
-                      <span className="text-sm sm:text-base">Track Points</span>
+                      <span className="text-sm sm:text-base">Drawing Controls</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex gap-2 mb-4">
+                    <div className="grid grid-cols-2 gap-2">
                       <Button
                         variant={currentMode === "draw" ? "default" : "outline"}
                         size="sm"
                         onClick={() => setCurrentMode("draw")}
-                        className={`flex-1 text-xs sm:text-sm ${
+                        className={`text-xs sm:text-sm ${
                           currentMode === "draw"
                             ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25"
                             : "border-gray-600 text-gray-300 hover:bg-gray-700/50"
                         } transition-all duration-200`}
                       >
                         <Circle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">Points</span>
-                        <span className="sm:hidden">Draw</span>
+                        <span className="hidden sm:inline">Track Points</span>
+                        <span className="sm:hidden">Points</span>
                       </Button>
                       <Button
                         variant={currentMode === "start-finish" ? "default" : "outline"}
                         size="sm"
                         onClick={() => setCurrentMode("start-finish")}
-                        className={`flex-1 text-xs sm:text-sm ${
+                        className={`text-xs sm:text-sm ${
                           currentMode === "start-finish"
                             ? "bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/25"
                             : "border-gray-600 text-gray-300 hover:bg-gray-700/50"
@@ -1137,7 +1178,45 @@ const TrackCreator: React.FC = () => {
                         <span className="sm:hidden">Start</span>
                       </Button>
                     </div>
+                    
+                    <div className="text-xs sm:text-sm text-gray-400 p-2 sm:p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Info className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400" />
+                        <span className="font-medium text-blue-300">Drawing Instructions</span>
+                      </div>
+                      <div className="space-y-1">
+                        <div>• Click "Start Drawing" on the map to begin</div>
+                        <div>• Select point type above before drawing</div>
+                        <div>• Click on the map to add points</div>
+                        <div>• Use "Drag Points" to reposition later</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
+                {/* Points List */}
+                <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-500/20 rounded-lg">
+                          <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
+                        </div>
+                        <span className="text-sm sm:text-base">Track Points ({track.points.length})</span>
+                      </div>
+                      {track.points.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedPoint(null)}
+                          className="text-xs border-gray-600 text-gray-300 hover:bg-gray-700/50"
+                        >
+                          Clear Selection
+                        </Button>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     {track.points.length === 0 ? (
                       <div className="text-center text-gray-400 py-6 sm:py-8">
                         <div className="p-3 sm:p-4 bg-gray-700/30 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 flex items-center justify-center">
@@ -1166,22 +1245,29 @@ const TrackCreator: React.FC = () => {
                                   point.type === "sector" ? "bg-yellow-500 shadow-lg shadow-yellow-500/50" :
                                   "bg-blue-500 shadow-lg shadow-blue-500/50"
                                 }`} />
-                                <span className="text-xs sm:text-sm font-medium text-white">{point.name || `Point ${index + 1}`}</span>
+                                <div>
+                                  <div className="text-xs sm:text-sm font-medium text-white">{point.name || `Point ${index + 1}`}</div>
+                                  <div className="text-xs text-gray-400 font-mono">
+                                    {point.lat.toFixed(6)}, {point.lng.toFixed(6)}
+                                  </div>
+                                </div>
                               </div>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removePoint(point.id);
-                                }}
-                                className="text-red-400 border-red-400/50 hover:bg-red-400/10 transition-all duration-200 p-1 sm:p-2"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            <div className="text-xs text-gray-400 mt-1 sm:mt-2 font-mono">
-                              {point.lat.toFixed(6)}, {point.lng.toFixed(6)}
+                              <div className="flex items-center gap-1">
+                                <Badge className="text-xs bg-gray-600/50 text-gray-300 border-gray-500/50">
+                                  {point.type}
+                                </Badge>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removePoint(point.id);
+                                  }}
+                                  className="text-red-400 border-red-400/50 hover:bg-red-400/10 transition-all duration-200 p-1 sm:p-2"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -1244,56 +1330,38 @@ const TrackCreator: React.FC = () => {
 
               {/* Sectors Tab */}
               <TabsContent value="sectors" className="space-y-4">
+                {/* Sector Creation */}
                 <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle className="text-white flex items-center gap-3">
                       <div className="p-2 bg-yellow-500/20 rounded-lg">
-                        <Timer className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400" />
+                        <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400" />
                       </div>
-                      <span className="text-sm sm:text-base">Timing Sectors</span>
+                      <span className="text-sm sm:text-base">Create Sectors</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="text-xs sm:text-sm text-gray-400 mb-4 p-2 sm:p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                    <div className="text-xs sm:text-sm text-gray-400 p-2 sm:p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
                       <div className="flex items-center gap-2 mb-1">
-                        <Info className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400" />
-                        <span className="font-medium text-blue-300 text-xs sm:text-sm">How to create sectors</span>
+                        <Info className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-400" />
+                        <span className="font-medium text-yellow-300">Sector Creation</span>
                       </div>
-                      Select two points below to create a timing sector between them
+                      <div className="space-y-1">
+                        <div>• Select start and end points from your track</div>
+                        <div>• Sectors enable detailed timing analysis</div>
+                        <div>• Use "Drag Sectors" to adjust boundaries later</div>
+                      </div>
                     </div>
 
-                    {track.sectors.length === 0 ? (
-                      <div className="text-center text-gray-400 py-6 sm:py-8">
-                        <div className="p-3 sm:p-4 bg-gray-700/30 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 flex items-center justify-center">
-                          <Timer className="h-6 w-6 sm:h-8 sm:w-8 opacity-50" />
-                        </div>
-                        <p className="font-medium text-sm sm:text-base">No sectors defined yet</p>
-                        <p className="text-xs sm:text-sm text-gray-500">Create sectors for detailed timing analysis</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2 max-h-36 sm:max-h-48 overflow-y-auto">
-                        {track.sectors.map((sector) => (
-                          <div key={sector.id} className="p-2 sm:p-3 bg-gray-700/30 rounded-lg border border-gray-600/50 hover:bg-gray-700/50 transition-all duration-200">
-                            <div className="flex items-center justify-between mb-1 sm:mb-2">
-                              <span className="font-medium text-white text-xs sm:text-sm">{sector.name}</span>
-                              <Badge className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-xs">
-                                {(sector.length / 1000).toFixed(2)} km
-                              </Badge>
-                            </div>
-                            <div className="text-xs text-gray-400 space-y-1">
-                              <div>From: <span className="text-white">{sector.startPoint.name}</span></div>
-                              <div>To: <span className="text-white">{sector.endPoint.name}</span></div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {track.points.length >= 2 && (
+                    {track.points.length >= 2 ? (
                       <div className="space-y-3 p-3 sm:p-4 bg-gray-700/20 rounded-lg border border-gray-600/30">
-                        <Label className="text-gray-300 font-medium text-sm">Create New Sector</Label>
+                        <Label className="text-gray-300 font-medium text-sm">New Sector</Label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <select className="bg-gray-700/50 border border-gray-600/50 text-white rounded-md px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm focus:border-yellow-500/50 focus:ring-yellow-500/20 transition-all duration-200">
+                          <select 
+                            className="bg-gray-700/50 border border-gray-600/50 text-white rounded-md px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm focus:border-yellow-500/50 focus:ring-yellow-500/20 transition-all duration-200"
+                            onChange={(e) => setSectorStartPoint(e.target.value)}
+                            value={sectorStartPoint}
+                          >
                             <option value="">Start Point</option>
                             {track.points.map((point) => (
                               <option key={point.id} value={point.id}>
@@ -1301,7 +1369,11 @@ const TrackCreator: React.FC = () => {
                               </option>
                             ))}
                           </select>
-                          <select className="bg-gray-700/50 border border-gray-600/50 text-white rounded-md px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm focus:border-yellow-500/50 focus:ring-yellow-500/20 transition-all duration-200">
+                          <select 
+                            className="bg-gray-700/50 border border-gray-600/50 text-white rounded-md px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm focus:border-yellow-500/50 focus:ring-yellow-500/20 transition-all duration-200"
+                            onChange={(e) => setSectorEndPoint(e.target.value)}
+                            value={sectorEndPoint}
+                          >
                             <option value="">End Point</option>
                             {track.points.map((point) => (
                               <option key={point.id} value={point.id}>
@@ -1313,11 +1385,83 @@ const TrackCreator: React.FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-full border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10 transition-all duration-200 text-xs sm:text-sm"
+                          onClick={handleCreateSector}
+                          disabled={!sectorStartPoint || !sectorEndPoint}
+                          className="w-full border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-xs sm:text-sm"
                         >
                           <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                           Create Sector
                         </Button>
+                      </div>
+                    ) : (
+                      <div className="text-center text-gray-400 py-4">
+                        <div className="p-2 bg-gray-700/30 rounded-full w-8 h-8 mx-auto mb-2 flex items-center justify-center">
+                          <MapPin className="h-4 w-4 opacity-50" />
+                        </div>
+                        <p className="text-xs sm:text-sm">Add at least 2 track points first</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Sectors List */}
+                <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-yellow-500/20 rounded-lg">
+                          <Timer className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400" />
+                        </div>
+                        <span className="text-sm sm:text-base">Timing Sectors ({track.sectors.length})</span>
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {track.sectors.length === 0 ? (
+                      <div className="text-center text-gray-400 py-6 sm:py-8">
+                        <div className="p-3 sm:p-4 bg-gray-700/30 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 flex items-center justify-center">
+                          <Timer className="h-6 w-6 sm:h-8 sm:w-8 opacity-50" />
+                        </div>
+                        <p className="font-medium text-sm sm:text-base">No sectors defined yet</p>
+                        <p className="text-xs sm:text-sm text-gray-500">Create sectors above for detailed timing analysis</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
+                        {track.sectors.map((sector) => (
+                          <div key={sector.id} className="p-2 sm:p-3 bg-gray-700/30 rounded-lg border border-gray-600/50 hover:bg-gray-700/50 transition-all duration-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <Badge className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-xs">
+                                  Sector {sector.id}
+                                </Badge>
+                                <span className="font-medium text-white text-xs sm:text-sm">{sector.name}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Badge className="bg-green-500/20 text-green-400 border border-green-500/30 text-xs">
+                                  {(sector.length / 1000).toFixed(2)} km
+                                </Badge>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => removeSector(sector.id)}
+                                  className="text-red-400 border-red-400/50 hover:bg-red-400/10 transition-all duration-200 p-1 sm:p-2"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-400 space-y-1">
+                              <div className="flex items-center gap-1">
+                                <div className="w-2 h-2 bg-green-500 rounded-full" />
+                                <span>From: <span className="text-white">{sector.startPoint.name || `Point ${sector.startPoint.order + 1}`}</span></span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <div className="w-2 h-2 bg-red-500 rounded-full" />
+                                <span>To: <span className="text-white">{sector.endPoint.name || `Point ${sector.endPoint.order + 1}`}</span></span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </CardContent>
