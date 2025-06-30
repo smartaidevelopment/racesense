@@ -37,6 +37,7 @@ const TrackCreator: React.FC = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const sectorMarkersRef = useRef<any[]>([]);
+  const sectorsCountRef = useRef<number>(0);
 
   const [track, setTrack] = useState<CustomTrack>({
     id: "",
@@ -53,6 +54,11 @@ const TrackCreator: React.FC = () => {
   const [zoom, setZoom] = useState(12);
   const [dragMode, setDragMode] = useState<"sectors" | "none">("none");
   const [isDragging, setIsDragging] = useState(false);
+
+  // Update sectors count ref whenever sectors change
+  useEffect(() => {
+    sectorsCountRef.current = track.sectors.length;
+  }, [track.sectors.length]);
 
   // Load Google Maps
   useEffect(() => {
@@ -86,15 +92,16 @@ const TrackCreator: React.FC = () => {
       if (e.latLng) {
         const lat = e.latLng.lat();
         const lng = e.latLng.lng();
+        const currentSectorsCount = sectorsCountRef.current;
         const newPoint: SectorPoint = {
           id: Date.now().toString(),
           lat,
           lng,
-          name: `Sector Point ${track.sectors.length * 2 + 1}`,
+          name: `Sector Point ${currentSectorsCount * 2 + 1}`,
         };
         const newSector = {
-          id: track.sectors.length + 1,
-          name: `Sector ${track.sectors.length + 1}`,
+          id: currentSectorsCount + 1,
+          name: `Sector ${currentSectorsCount + 1}`,
           startPoint: newPoint,
           endPoint: { ...newPoint, id: (Date.now() + 1).toString() },
           length: 0,
@@ -109,7 +116,7 @@ const TrackCreator: React.FC = () => {
         window.google.maps.event.removeListener(clickListener);
       }
     };
-  }, [track.sectors.length]);
+  }, []); // Remove dependency on track.sectors.length
 
   // Update sector markers
   useEffect(() => {
@@ -299,6 +306,16 @@ const TrackCreator: React.FC = () => {
                   className="w-full h-[300px] sm:h-[400px] lg:h-[500px] rounded-b-lg border-t border-gray-700/50 relative overflow-hidden"
                   style={{ zIndex: 1, cursor: dragMode === "sectors" ? 'move' : 'crosshair' }}
                 />
+                {track.sectors.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="bg-black/70 backdrop-blur-sm rounded-lg p-4 text-center max-w-sm mx-4">
+                      <div className="text-yellow-400 text-lg font-semibold mb-2">Click to Add Sectors</div>
+                      <div className="text-gray-300 text-sm">
+                        Click anywhere on the map to create your first sector
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

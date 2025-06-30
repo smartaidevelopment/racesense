@@ -22,6 +22,7 @@ import {
   Brain,
   Cog,
   Map,
+  Timer,
 } from "lucide-react";
 
 const navigation = [
@@ -30,6 +31,7 @@ const navigation = [
   { name: "Telemetry", href: "/telemetry", icon: Activity },
   { name: "Session Analysis", href: "/session-analysis", icon: BarChart3 },
   { name: "Tracks", href: "/tracks", icon: Map },
+  { name: "Sector Creator", href: "/track-creator", icon: Timer },
   { name: "Vehicle Setup", href: "/vehicle-setup", icon: Wrench },
   { name: "Advanced AI", href: "/advanced-ai", icon: Gauge },
   { name: "Data Management", href: "/data-management", icon: Database },
