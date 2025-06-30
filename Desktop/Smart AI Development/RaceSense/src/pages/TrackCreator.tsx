@@ -126,7 +126,9 @@ const TrackCreator: React.FC = () => {
       // Map click to add points
       // @ts-ignore
       map.addListener("click", (e: any) => {
-        if (isDrawing && e.latLng) {
+        console.log("Map clicked:", { isDrawing, dragMode, latLng: e.latLng });
+        if (isDrawing && e.latLng && dragMode === "none") {
+          console.log("Adding point at:", e.latLng.lat(), e.latLng.lng());
           addPoint(e.latLng.lat(), e.latLng.lng());
         }
       });
@@ -266,6 +268,11 @@ const TrackCreator: React.FC = () => {
     updateSectorMarkers();
   }, [dragMode]);
 
+  // Debug drawing state changes
+  useEffect(() => {
+    console.log("Drawing state changed:", { isDrawing, dragMode });
+  }, [isDrawing, dragMode]);
+
   // Update sector markers
   const updateSectorMarkers = () => {
     if (!mapInstanceRef.current) return;
@@ -385,6 +392,7 @@ const TrackCreator: React.FC = () => {
 
   // Add point
   const addPoint = (lat: number, lng: number) => {
+    console.log("addPoint called with:", lat, lng);
     const newPoint: TrackPoint = {
       id: Date.now().toString(),
       lat,
@@ -393,7 +401,12 @@ const TrackCreator: React.FC = () => {
       name: `Point ${track.points.length + 1}`,
       order: track.points.length,
     };
-    setTrack(prev => ({ ...prev, points: [...prev.points, newPoint] }));
+    console.log("New point:", newPoint);
+    setTrack(prev => {
+      const newTrack = { ...prev, points: [...prev.points, newPoint] };
+      console.log("Updated track:", newTrack);
+      return newTrack;
+    });
     notify({
       type: "racing",
       title: "Point Added",
@@ -581,6 +594,7 @@ const TrackCreator: React.FC = () => {
 
   // Drawing controls
   const handleStartDrawing = () => {
+    console.log("handleStartDrawing called");
     // Disable drag mode when starting drawing
     if (dragMode !== "none") {
       setDragMode("none");
@@ -591,6 +605,7 @@ const TrackCreator: React.FC = () => {
       });
     }
     setIsDrawing(true);
+    console.log("Drawing mode set to true");
     notify({
       type: "info",
       title: "Drawing Mode Active",
