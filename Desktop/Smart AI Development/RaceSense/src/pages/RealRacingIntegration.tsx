@@ -1,5 +1,4 @@
 import React from "react";
-import { Layout } from "@/components/Layout";
 import { RacingButton } from "@/components/RacingButton";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,41 +19,42 @@ import {
 } from "@/services/RacingCommandCenterService";
 import {
   Command,
-  Cpu,
-  Gauge,
-  Activity,
-  Zap,
-  AlertTriangle,
-  CheckCircle,
   Play,
   Square,
-  Settings,
-  TrendingUp,
+  Globe,
+  Target,
+  AlertTriangle,
   Mic,
+  Brain,
+  Headphones,
+  Radio,
+  Flame,
+  Users,
+  Eye,
+  Gauge,
+  Activity,
+  TrendingUp,
+  Timer,
+  MapPin,
+  Car,
+  Bluetooth,
+  Usb,
+  Settings,
+  Thermometer,
+  Zap,
+  Circle,
+  Sun,
+  Moon,
+  Trophy,
+  CheckCircle,
+  X,
+  ChevronRight,
+  Cloud,
   MicOff,
   Volume2,
   VolumeX,
-  Cloud,
-  Thermometer,
-  Wind,
-  Droplets,
-  MapPin,
-  Timer,
-  Trophy,
-  Target,
+  Cpu,
   Fuel,
-  CircleGauge,
-  Headphones,
-  Radio,
-  Satellite,
-  Globe,
-  Eye,
-  Brain,
-  Flame,
-  Lightbulb,
-  Car,
-  Flag,
-  Users,
 } from "lucide-react";
 
 interface CommandCenterState {
@@ -751,7 +751,7 @@ class RealRacingCommandCenter extends React.Component<{}, CommandCenterState> {
         {/* Tire Data */}
         <Card className="p-6">
           <h3 className="font-semibold mb-4 flex items-center gap-2">
-            <CircleGauge className="h-5 w-5 text-racing-green" />
+            <Gauge className="h-5 w-5 text-racing-green" />
             Tire Pressures
           </h3>
           <div className="space-y-4">
@@ -937,287 +937,285 @@ class RealRacingCommandCenter extends React.Component<{}, CommandCenterState> {
     } = this.state;
 
     return (
-      <Layout>
-        <div className="space-y-6">
-          {/* Command Center Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <Command className="h-8 w-8 text-racing-orange" />
-                  <div
-                    className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${
-                      isSessionActive
-                        ? "bg-racing-green animate-pulse"
-                        : "bg-gray-500"
-                    }`}
-                  />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold">Racing Command Center</h1>
-                  <p className="text-muted-foreground">
-                    Live mission control for professional racing
-                  </p>
-                </div>
-              </div>
-            </div>
-
+      <div className="space-y-6">
+        {/* Command Center Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              <RacingButton
-                variant="outline"
-                size="sm"
-                icon={multiScreenMode ? Eye : Users}
-                onClick={() =>
-                  this.setState({ multiScreenMode: !multiScreenMode })
-                }
-              >
-                {multiScreenMode ? "Single" : "Multi"} Screen
-              </RacingButton>
-              <RacingButton
-                variant="outline"
-                size="sm"
-                icon={compactMode ? Globe : Target}
-                onClick={() => this.setState({ compactMode: !compactMode })}
-              >
-                {compactMode ? "Full" : "Compact"} View
-              </RacingButton>
+              <div className="relative">
+                <Command className="h-8 w-8 text-racing-orange" />
+                <div
+                  className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${
+                    isSessionActive
+                      ? "bg-racing-green animate-pulse"
+                      : "bg-gray-500"
+                  }`}
+                />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">Racing Command Center</h1>
+                <p className="text-muted-foreground">
+                  Live mission control for professional racing
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Session Control Panel */}
-          <Card className="p-6 bg-black/90 border-racing-orange/50">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-racing-orange">
-                Mission Control
-              </h3>
-              <div className="flex items-center gap-2">
-                <RacingStatusIndicator
-                  status={isSessionActive ? "online" : "offline"}
-                  text={
-                    isSessionActive
-                      ? `${selectedSessionType.toUpperCase()} ACTIVE`
-                      : "STANDBY"
+          <div className="flex items-center gap-3">
+            <RacingButton
+              variant="outline"
+              size="sm"
+              icon={multiScreenMode ? Eye : Users}
+              onClick={() =>
+                this.setState({ multiScreenMode: !multiScreenMode })
+              }
+            >
+              {multiScreenMode ? "Single" : "Multi"} Screen
+            </RacingButton>
+            <RacingButton
+              variant="outline"
+              size="sm"
+              icon={compactMode ? Globe : Target}
+              onClick={() => this.setState({ compactMode: !compactMode })}
+            >
+              {compactMode ? "Full" : "Compact"} View
+            </RacingButton>
+          </div>
+        </div>
+
+        {/* Session Control Panel */}
+        <Card className="p-6 bg-black/90 border-racing-orange/50">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold text-racing-orange">
+              Mission Control
+            </h3>
+            <div className="flex items-center gap-2">
+              <RacingStatusIndicator
+                status={isSessionActive ? "online" : "offline"}
+                text={
+                  isSessionActive
+                    ? `${selectedSessionType.toUpperCase()} ACTIVE`
+                    : "STANDBY"
+                }
+                size="lg"
+              />
+            </div>
+          </div>
+
+          {!isSessionActive ? (
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Session Type
+                </label>
+                <select
+                  value={selectedSessionType}
+                  onChange={(e) =>
+                    this.setState({
+                      selectedSessionType: e.target.value as any,
+                    })
                   }
-                  size="lg"
+                  className="w-full p-2 bg-black border border-racing-orange/30 rounded text-white"
+                >
+                  <option value="practice">Practice</option>
+                  <option value="qualifying">Qualifying</option>
+                  <option value="race">Race</option>
+                  <option value="test">Test</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Target Lap (s)
+                </label>
+                <input
+                  type="number"
+                  step="0.001"
+                  value={targetLapTime}
+                  onChange={(e) =>
+                    this.setState({ targetLapTime: e.target.value })
+                  }
+                  className="w-full p-2 bg-black border border-racing-orange/30 rounded text-white"
                 />
               </div>
-            </div>
-
-            {!isSessionActive ? (
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Session Type
-                  </label>
-                  <select
-                    value={selectedSessionType}
-                    onChange={(e) =>
-                      this.setState({
-                        selectedSessionType: e.target.value as any,
-                      })
-                    }
-                    className="w-full p-2 bg-black border border-racing-orange/30 rounded text-white"
-                  >
-                    <option value="practice">Practice</option>
-                    <option value="qualifying">Qualifying</option>
-                    <option value="race">Race</option>
-                    <option value="test">Test</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Target Lap (s)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.001"
-                    value={targetLapTime}
-                    onChange={(e) =>
-                      this.setState({ targetLapTime: e.target.value })
-                    }
-                    className="w-full p-2 bg-black border border-racing-orange/30 rounded text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Target Laps
-                  </label>
-                  <input
-                    type="number"
-                    value={targetLaps}
-                    onChange={(e) =>
-                      this.setState({ targetLaps: e.target.value })
-                    }
-                    className="w-full p-2 bg-black border border-racing-orange/30 rounded text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Fuel (%)
-                  </label>
-                  <input
-                    type="number"
-                    value={fuelTarget}
-                    onChange={(e) =>
-                      this.setState({ fuelTarget: e.target.value })
-                    }
-                    className="w-full p-2 bg-black border border-racing-orange/30 rounded text-white"
-                  />
-                </div>
-                <RacingButton
-                  variant="racing"
-                  racing="green"
-                  icon={Play}
-                  onClick={this.startSession}
-                  className="h-10"
-                >
-                  ACTIVATE
-                </RacingButton>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Target Laps
+                </label>
+                <input
+                  type="number"
+                  value={targetLaps}
+                  onChange={(e) =>
+                    this.setState({ targetLaps: e.target.value })
+                  }
+                  className="w-full p-2 bg-black border border-racing-orange/30 rounded text-white"
+                />
               </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div className="grid grid-cols-4 gap-6">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-racing-green">
-                      {currentSession?.currentLap || 0}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      CURRENT LAP
-                    </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Fuel (%)
+                </label>
+                <input
+                  type="number"
+                  value={fuelTarget}
+                  onChange={(e) =>
+                    this.setState({ fuelTarget: e.target.value })
+                  }
+                  className="w-full p-2 bg-black border border-racing-orange/30 rounded text-white"
+                />
+              </div>
+              <RacingButton
+                variant="racing"
+                racing="green"
+                icon={Play}
+                onClick={this.startSession}
+                className="h-10"
+              >
+                ACTIVATE
+              </RacingButton>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="grid grid-cols-4 gap-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-racing-green">
+                    {currentSession?.currentLap || 0}
                   </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-racing-blue">
-                      {currentSession
-                        ? this.formatDuration(currentSession.duration)
-                        : "00:00"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      SESSION TIME
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-racing-yellow">
-                      {currentSession?.bestLapTime
-                        ? this.formatTime(currentSession.bestLapTime)
-                        : "--:--.---"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      BEST LAP
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-racing-purple">
-                      {selectedSessionType.toUpperCase()}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      SESSION TYPE
-                    </div>
+                  <div className="text-xs text-muted-foreground">
+                    CURRENT LAP
                   </div>
                 </div>
-                <RacingButton
-                  variant="racing"
-                  racing="red"
-                  icon={Square}
-                  onClick={this.stopSession}
-                >
-                  DEACTIVATE
-                </RacingButton>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-racing-blue">
+                    {currentSession
+                      ? this.formatDuration(currentSession.duration)
+                      : "00:00"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    SESSION TIME
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-racing-yellow">
+                    {currentSession?.bestLapTime
+                      ? this.formatTime(currentSession.bestLapTime)
+                      : "--:--.---"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    BEST LAP
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-racing-purple">
+                    {selectedSessionType.toUpperCase()}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    SESSION TYPE
+                  </div>
+                </div>
+              </div>
+              <RacingButton
+                variant="racing"
+                racing="red"
+                icon={Square}
+                onClick={this.stopSession}
+              >
+                DEACTIVATE
+              </RacingButton>
+            </div>
+          )}
+        </Card>
+
+        {/* View Navigation */}
+        {isSessionActive && (
+          <div className="flex gap-2">
+            {[
+              { key: "overview", label: "Overview", icon: Globe },
+              { key: "telemetry", label: "Telemetry", icon: Gauge },
+              { key: "strategy", label: "Strategy", icon: Target },
+              { key: "alerts", label: "Alerts", icon: AlertTriangle },
+              { key: "voice", label: "Voice", icon: Mic },
+            ].map((view) => (
+              <RacingButton
+                key={view.key}
+                variant={selectedView === view.key ? "racing" : "outline"}
+                racing="orange"
+                size="sm"
+                icon={view.icon}
+                onClick={() =>
+                  this.setState({ selectedView: view.key as any })
+                }
+              >
+                {view.label}
+              </RacingButton>
+            ))}
+          </div>
+        )}
+
+        {/* Main Content Area */}
+        {isSessionActive && (
+          <div className="min-h-[600px]">
+            {selectedView === "overview" && this.renderOverview()}
+            {selectedView === "telemetry" && this.renderTelemetryView()}
+            {selectedView === "alerts" && this.renderAlertsView()}
+            {selectedView === "strategy" && (
+              <div className="text-center py-20">
+                <Brain className="h-16 w-16 mx-auto text-racing-purple mb-4" />
+                <h3 className="text-xl font-semibold mb-2">
+                  Strategy Analysis
+                </h3>
+                <p className="text-muted-foreground">
+                  Advanced race strategy tools coming soon
+                </p>
               </div>
             )}
-          </Card>
+            {selectedView === "voice" && (
+              <div className="text-center py-20">
+                <Headphones className="h-16 w-16 mx-auto text-racing-blue mb-4" />
+                <h3 className="text-xl font-semibold mb-2">
+                  Voice Command Center
+                </h3>
+                <p className="text-muted-foreground">
+                  Advanced voice control interface coming soon
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
-          {/* View Navigation */}
-          {isSessionActive && (
-            <div className="flex gap-2">
-              {[
-                { key: "overview", label: "Overview", icon: Globe },
-                { key: "telemetry", label: "Telemetry", icon: Gauge },
-                { key: "strategy", label: "Strategy", icon: Target },
-                { key: "alerts", label: "Alerts", icon: AlertTriangle },
-                { key: "voice", label: "Voice", icon: Mic },
-              ].map((view) => (
-                <RacingButton
-                  key={view.key}
-                  variant={selectedView === view.key ? "racing" : "outline"}
-                  racing="orange"
-                  size="sm"
-                  icon={view.icon}
-                  onClick={() =>
-                    this.setState({ selectedView: view.key as any })
-                  }
-                >
-                  {view.label}
-                </RacingButton>
-              ))}
-            </div>
-          )}
-
-          {/* Main Content Area */}
-          {isSessionActive && (
-            <div className="min-h-[600px]">
-              {selectedView === "overview" && this.renderOverview()}
-              {selectedView === "telemetry" && this.renderTelemetryView()}
-              {selectedView === "alerts" && this.renderAlertsView()}
-              {selectedView === "strategy" && (
-                <div className="text-center py-20">
-                  <Brain className="h-16 w-16 mx-auto text-racing-purple mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">
-                    Strategy Analysis
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Advanced race strategy tools coming soon
-                  </p>
-                </div>
-              )}
-              {selectedView === "voice" && (
-                <div className="text-center py-20">
-                  <Headphones className="h-16 w-16 mx-auto text-racing-blue mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">
-                    Voice Command Center
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Advanced voice control interface coming soon
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {!isSessionActive && (
-            <Card className="p-12 text-center">
-              <Flame className="h-20 w-20 mx-auto text-racing-orange mb-6" />
-              <h2 className="text-2xl font-bold mb-4">Command Center Ready</h2>
-              <p className="text-muted-foreground text-lg mb-6">
-                Configure your session parameters above and click ACTIVATE to
-                begin live mission control
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
-                <div className="p-4 bg-racing-blue/10 border border-racing-blue/30 rounded-lg">
-                  <Gauge className="h-8 w-8 mx-auto text-racing-blue mb-2" />
-                  <div className="font-medium">Live Telemetry</div>
-                  <div className="text-xs text-muted-foreground">
-                    Real-time vehicle data
-                  </div>
-                </div>
-                <div className="p-4 bg-racing-green/10 border border-racing-green/30 rounded-lg">
-                  <Brain className="h-8 w-8 mx-auto text-racing-green mb-2" />
-                  <div className="font-medium">AI Coaching</div>
-                  <div className="text-xs text-muted-foreground">
-                    Intelligent performance tips
-                  </div>
-                </div>
-                <div className="p-4 bg-racing-purple/10 border border-racing-purple/30 rounded-lg">
-                  <Radio className="h-8 w-8 mx-auto text-racing-purple mb-2" />
-                  <div className="font-medium">Voice Control</div>
-                  <div className="text-xs text-muted-foreground">
-                    Hands-free operation
-                  </div>
+        {!isSessionActive && (
+          <Card className="p-12 text-center">
+            <Flame className="h-20 w-20 mx-auto text-racing-orange mb-6" />
+            <h2 className="text-2xl font-bold mb-4">Command Center Ready</h2>
+            <p className="text-muted-foreground text-lg mb-6">
+              Configure your session parameters above and click ACTIVATE to
+              begin live mission control
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
+              <div className="p-4 bg-racing-blue/10 border border-racing-blue/30 rounded-lg">
+                <Gauge className="h-8 w-8 mx-auto text-racing-blue mb-2" />
+                <div className="font-medium">Live Telemetry</div>
+                <div className="text-xs text-muted-foreground">
+                  Real-time vehicle data
                 </div>
               </div>
-            </Card>
-          )}
-        </div>
-      </Layout>
+              <div className="p-4 bg-racing-green/10 border border-racing-green/30 rounded-lg">
+                <Brain className="h-8 w-8 mx-auto text-racing-green mb-2" />
+                <div className="font-medium">AI Coaching</div>
+                <div className="text-xs text-muted-foreground">
+                  Intelligent performance tips
+                </div>
+              </div>
+              <div className="p-4 bg-racing-purple/10 border border-racing-purple/30 rounded-lg">
+                <Radio className="h-8 w-8 mx-auto text-racing-purple mb-2" />
+                <div className="font-medium">Voice Control</div>
+                <div className="text-xs text-muted-foreground">
+                  Hands-free operation
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
     );
   }
 }

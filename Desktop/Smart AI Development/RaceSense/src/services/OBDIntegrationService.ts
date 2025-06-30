@@ -66,11 +66,23 @@ interface LiveOBDData {
   timestamp: number;
 }
 
+// Type guards for browser compatibility
+// @ts-ignore
+// eslint-disable-next-line
+// These are only available in browser environments supporting Web Bluetooth/Serial
+// Fallback to 'any' if not present
+// @ts-ignore
+const BluetoothDevice = (window as any).BluetoothDevice || ({} as any);
+// @ts-ignore
+const SerialPort = (window as any).SerialPort || ({} as any);
+// @ts-ignore
+const BluetoothRemoteGATTCharacteristic = (window as any).BluetoothRemoteGATTCharacteristic || ({} as any);
+
 class OBDIntegrationService {
   private isConnected: boolean = false;
-  private device: BluetoothDevice | SerialPort | null = null;
-  private characteristic: BluetoothRemoteGATTCharacteristic | null = null;
-  private serialPort: SerialPort | null = null;
+  private device: any = null; // BluetoothDevice | SerialPort
+  private characteristic: any = null; // BluetoothRemoteGATTCharacteristic
+  private serialPort: any = null; // SerialPort
   private readingInterval: NodeJS.Timeout | null = null;
   private vehicleInfo: VehicleInfo | null = null;
   private supportedParameters: Map<string, OBDParameter> = new Map();
@@ -78,6 +90,8 @@ class OBDIntegrationService {
   private connectionListeners: Set<(connected: boolean) => void> = new Set();
   private errorListeners: Set<(error: string) => void> = new Set();
   private currentData: Partial<LiveOBDData> = {};
+  private lastCommand: string | null = null;
+  private pendingCommandResolve: ((response: string) => void) | null = null;
 
   constructor() {
     this.initializeSupportedParameters();
@@ -236,12 +250,12 @@ class OBDIntegrationService {
   // Connect to OBD-II adapter via Bluetooth
   async connectBluetooth(): Promise<boolean> {
     try {
-      if (!navigator.bluetooth) {
+      if (!(navigator as any).bluetooth) {
         throw new Error("Web Bluetooth not supported in this browser");
       }
 
       // Request Bluetooth device
-      this.device = await navigator.bluetooth.requestDevice({
+      this.device = await (navigator as any).bluetooth.requestDevice({
         filters: [
           { namePrefix: "OBDII" },
           { namePrefix: "ELM327" },
@@ -289,7 +303,7 @@ class OBDIntegrationService {
   // Connect to OBD-II adapter via Web Serial API
   async connectSerial(): Promise<boolean> {
     try {
-      if (!("serial" in navigator)) {
+      if (!(navigator as any).serial) {
         throw new Error("Web Serial API not supported in this browser");
       }
 
@@ -363,22 +377,32 @@ class OBDIntegrationService {
   // Send command to OBD adapter
   private async sendCommand(command: string): Promise<string> {
     const fullCommand = command + "\r";
-
+    this.lastCommand = command;
     if (this.characteristic) {
       // Bluetooth transmission
       const encoder = new TextEncoder();
       await this.characteristic.writeValue(encoder.encode(fullCommand));
+      // Wait for response from handleBluetoothData
+      return await new Promise<string>((resolve) => {
+        this.pendingCommandResolve = resolve;
+        setTimeout(() => {
+          if (this.pendingCommandResolve) {
+            this.pendingCommandResolve = null;
+            resolve("TIMEOUT");
+          }
+        }, 1000); // 1s timeout
+      });
     } else if (this.serialPort) {
       // Serial transmission
       const writer = this.serialPort.writable!.getWriter();
       const encoder = new TextEncoder();
       await writer.write(encoder.encode(fullCommand));
       writer.releaseLock();
+      await this.delay(200);
+      return "OK"; // Placeholder for serial
     }
-
-    // Wait for response (simplified - in real implementation would use proper response handling)
     await this.delay(200);
-    return "OK"; // Placeholder response
+    return "NO_DEVICE";
   }
 
   // Get vehicle information
@@ -535,10 +559,10 @@ class OBDIntegrationService {
       afr: 14.7, // Stoichiometric ratio
       ignitionTiming: 10,
       fuelTrim: {
-        shortTerm: 0,
-        longTerm: 2,
+        shortTerm: this.currentData.fuelTrim?.shortTerm || 0,
+        longTerm: this.currentData.fuelTrim?.longTerm || 0,
       },
-      voltage: 12.6,
+      voltage: this.currentData.voltage || 12.6,
       timestamp: Date.now(),
     };
 
@@ -553,13 +577,52 @@ class OBDIntegrationService {
 
   // Handle Bluetooth data reception
   private handleBluetoothData(event: Event): void {
-    const target = event.target as BluetoothRemoteGATTCharacteristic;
+    const target = event.target as any; // BluetoothRemoteGATTCharacteristic
     const value = target.value;
-
     if (value) {
       const decoder = new TextDecoder();
       const response = decoder.decode(value);
-      // Process response...
+      // Debug: Log all incoming data
+      console.log("[OBD Bluetooth] Received:", response);
+      // If waiting for a command response, resolve it
+      if (this.pendingCommandResolve) {
+        this.pendingCommandResolve(response);
+        this.pendingCommandResolve = null;
+      }
+      // Basic parse: If response contains a PID, update currentData
+      // Example: '41 0C 1A F8' => RPM
+      const match = response.match(/41 ([0-9A-F]{2}) (([0-9A-F]{2} ?)+)/i);
+      if (match) {
+        const pidHex = match[1];
+        const dataHex = match[2].trim().split(/\s+/);
+        const pid = "01" + pidHex;
+        const param = this.supportedParameters.get(pid);
+        if (param) {
+          const bytes = dataHex.map((h) => parseInt(h, 16));
+          const value = param.formula(bytes);
+          // Special handling for fuel trim
+          if (param.name === 'Short Term Fuel Trim') {
+            if (!this.currentData.fuelTrim) this.currentData.fuelTrim = { shortTerm: 0, longTerm: 0 };
+            this.currentData.fuelTrim.shortTerm = value;
+          } else if (param.name === 'Long Term Fuel Trim') {
+            if (!this.currentData.fuelTrim) this.currentData.fuelTrim = { shortTerm: 0, longTerm: 0 };
+            this.currentData.fuelTrim.longTerm = value;
+          } else {
+            const key = param.name.replace(/\s/g, '').toLowerCase();
+            // Only assign to known scalar keys
+            const allowedScalarKeys = [
+              'speed', 'rpm', 'throttleposition', 'engineload', 'coolanttemp',
+              'intakeairtemp', 'maf', 'fuelpressure', 'manifoldpressure',
+              'fuellevel', 'oiltemp', 'boost', 'afr', 'ignitiontiming', 'voltage', 'timestamp'
+            ];
+            if (allowedScalarKeys.includes(key)) {
+              (this.currentData as Partial<Record<typeof key, number>>)[key] = value;
+            }
+          }
+          this.currentData.timestamp = Date.now();
+          this.emitCurrentData();
+        }
+      }
     }
   }
 
@@ -618,8 +681,7 @@ class OBDIntegrationService {
     if (!this.isConnected || !this.currentData.timestamp) {
       return null;
     }
-
-    return this.emitCurrentData as any; // Return current data
+    return this.currentData as LiveOBDData;
   }
 
   // Get current vehicle information

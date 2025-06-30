@@ -26,7 +26,6 @@ import {
   Eye,
   Edit,
   BarChart3,
-  CloudUpload,
   HardDrive,
   Wifi,
 } from "lucide-react";
@@ -464,7 +463,7 @@ class DataManagement extends React.Component<{}, DataManagementState> {
               <Card className="bg-gray-800 border-gray-700 mb-6">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <CloudUpload className="h-4 w-4" />
+                    <Upload className="h-4 w-4" />
                     Cloud Sync Status
                   </CardTitle>
                 </CardHeader>
@@ -766,7 +765,7 @@ class DataManagement extends React.Component<{}, DataManagementState> {
                                   className="bg-blue-900 border-blue-700 hover:bg-blue-800"
                                   onClick={() => this.syncToCloud(session.id)}
                                 >
-                                  <CloudUpload className="h-4 w-4" />
+                                  <Upload className="h-4 w-4" />
                                 </Button>
                               )}
 

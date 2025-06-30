@@ -1,5 +1,4 @@
 import React from "react";
-import { Layout } from "@/components/Layout";
 import { RacingButton } from "@/components/RacingButton";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -940,55 +939,53 @@ class AdvancedRacingAnalysisPage extends React.Component<{}, AnalysisState> {
     const { selectedTab } = this.state;
 
     return (
-      <Layout>
-        <div className="space-y-8">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <Brain className="h-8 w-8 text-racing-purple" />
-                Advanced Racing Analysis
-              </h1>
-              <p className="text-muted-foreground mt-2">
-                AI-powered performance coaching and comprehensive lap analysis
-              </p>
-            </div>
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Brain className="h-8 w-8 text-racing-purple" />
+              Advanced Racing Analysis
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              AI-powered performance coaching and comprehensive lap analysis
+            </p>
           </div>
-
-          {/* Tab Navigation */}
-          <div className="flex gap-2">
-            <RacingButton
-              variant={selectedTab === "coach" ? "racing" : "outline"}
-              racing="purple"
-              icon={Brain}
-              onClick={() => this.setState({ selectedTab: "coach" })}
-            >
-              AI Coach
-            </RacingButton>
-            <RacingButton
-              variant={selectedTab === "comparison" ? "racing" : "outline"}
-              racing="blue"
-              icon={BarChart3}
-              onClick={() => this.setState({ selectedTab: "comparison" })}
-            >
-              Lap Comparison
-            </RacingButton>
-            <RacingButton
-              variant={selectedTab === "analytics" ? "racing" : "outline"}
-              racing="green"
-              icon={TrendingUp}
-              onClick={() => this.setState({ selectedTab: "analytics" })}
-            >
-              Analytics
-            </RacingButton>
-          </div>
-
-          {/* Tab Content */}
-          {selectedTab === "coach" && this.renderCoachTab()}
-          {selectedTab === "comparison" && this.renderComparisonTab()}
-          {selectedTab === "analytics" && this.renderAnalyticsTab()}
         </div>
-      </Layout>
+
+        {/* Tab Navigation */}
+        <div className="flex gap-2">
+          <RacingButton
+            variant={selectedTab === "coach" ? "racing" : "outline"}
+            racing="purple"
+            icon={Brain}
+            onClick={() => this.setState({ selectedTab: "coach" })}
+          >
+            AI Coach
+          </RacingButton>
+          <RacingButton
+            variant={selectedTab === "comparison" ? "racing" : "outline"}
+            racing="blue"
+            icon={BarChart3}
+            onClick={() => this.setState({ selectedTab: "comparison" })}
+          >
+            Lap Comparison
+          </RacingButton>
+          <RacingButton
+            variant={selectedTab === "analytics" ? "racing" : "outline"}
+            racing="green"
+            icon={TrendingUp}
+            onClick={() => this.setState({ selectedTab: "analytics" })}
+          >
+            Analytics
+          </RacingButton>
+        </div>
+
+        {/* Tab Content */}
+        {selectedTab === "coach" && this.renderCoachTab()}
+        {selectedTab === "comparison" && this.renderComparisonTab()}
+        {selectedTab === "analytics" && this.renderAnalyticsTab()}
+      </div>
     );
   }
 }

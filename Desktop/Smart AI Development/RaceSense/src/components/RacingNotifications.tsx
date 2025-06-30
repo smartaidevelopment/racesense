@@ -1,325 +1,211 @@
-import React from "react";
-import { X, CheckCircle, AlertTriangle, Info, Zap } from "lucide-react";
+import React, { createContext, useContext, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { X, CheckCircle, AlertCircle, Info, Zap, Trophy, Flag, Gauge } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface NotificationAction {
+  label: string;
+  action: () => void;
+  style?: "primary" | "secondary" | "danger";
+}
 
 interface Notification {
   id: string;
-  type: "success" | "error" | "warning" | "info";
+  type: "success" | "error" | "warning" | "info" | "racing" | "achievement" | "flag" | "performance";
   title: string;
-  message?: string;
+  message: string;
   duration?: number;
-  actions?: Array<{
-    label: string;
-    action: () => void;
-    style?: "primary" | "secondary";
-  }>;
+  actions?: NotificationAction[];
+  timestamp: Date;
 }
 
-interface NotificationState {
+interface NotificationContextType {
   notifications: Notification[];
+  notify: (notification: Omit<Notification, "id" | "timestamp">) => void;
+  dismiss: (id: string) => void;
+  clearAll: () => void;
 }
 
-type NotificationListener = (notifications: Notification[]) => void;
+const NotificationContext = createContext<NotificationContextType | null>(null);
 
-class NotificationManager {
-  private notifications: Notification[] = [];
-  private listeners: NotificationListener[] = [];
-  private timeouts: Map<string, NodeJS.Timeout> = new Map();
-
-  subscribe(listener: NotificationListener): () => void {
-    this.listeners.push(listener);
-    // Immediately call with current notifications
-    listener(this.notifications);
-
-    return () => {
-      const index = this.listeners.indexOf(listener);
-      if (index > -1) {
-        this.listeners.splice(index, 1);
-      }
-    };
+export const useNotifications = () => {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    throw new Error("useNotifications must be used within NotificationProvider");
   }
+  return context;
+};
 
-  private notifyListeners() {
-    this.listeners.forEach((listener) => {
-      try {
-        listener([...this.notifications]);
-      } catch (error) {
-        console.warn("Notification listener error:", error);
-      }
-    });
-  }
+export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  private generateId(): string {
-    return `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  show(notification: Omit<Notification, "id">): string {
-    const id = this.generateId();
+  const notify = useCallback((notification: Omit<Notification, "id" | "timestamp">) => {
+    const id = Math.random().toString(36).substr(2, 9);
     const newNotification: Notification = {
-      id,
-      duration: 5000,
       ...notification,
+      id,
+      timestamp: new Date(),
     };
 
-    this.notifications.unshift(newNotification);
+    setNotifications(prev => [...prev, newNotification]);
 
-    // Keep only last 5 notifications
-    if (this.notifications.length > 5) {
-      this.notifications = this.notifications.slice(0, 5);
+    if (notification.duration !== 0) {
+      setTimeout(() => {
+        dismiss(id);
+      }, notification.duration || 5000);
     }
+  }, []);
 
-    this.notifyListeners();
+  const dismiss = useCallback((id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
 
-    // Auto dismiss after duration
-    if (newNotification.duration && newNotification.duration > 0) {
-      const timeout = setTimeout(() => {
-        this.dismiss(id);
-      }, newNotification.duration);
+  const clearAll = useCallback(() => {
+    setNotifications([]);
+  }, []);
 
-      this.timeouts.set(id, timeout);
-    }
+  return (
+    <NotificationContext.Provider value={{ notifications, notify, dismiss, clearAll }}>
+      {children}
+      <NotificationContainer />
+    </NotificationContext.Provider>
+  );
+};
 
-    return id;
-  }
+const NotificationContainer: React.FC = () => {
+  const { notifications, dismiss } = useNotifications();
 
-  dismiss(id: string) {
-    const timeout = this.timeouts.get(id);
-    if (timeout) {
-      clearTimeout(timeout);
-      this.timeouts.delete(id);
-    }
+  if (typeof window === "undefined") return null;
 
-    this.notifications = this.notifications.filter((n) => n.id !== id);
-    this.notifyListeners();
-  }
+  return createPortal(
+    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
+      {notifications.map((notification) => (
+        <NotificationItem key={notification.id} notification={notification} onDismiss={dismiss} />
+      ))}
+    </div>,
+    document.body
+  );
+};
 
-  clear() {
-    this.timeouts.forEach((timeout) => clearTimeout(timeout));
-    this.timeouts.clear();
-    this.notifications = [];
-    this.notifyListeners();
-  }
-
-  // Convenience methods
-  success(title: string, message?: string, options?: Partial<Notification>) {
-    return this.show({ type: "success", title, message, ...options });
-  }
-
-  error(title: string, message?: string, options?: Partial<Notification>) {
-    return this.show({
-      type: "error",
-      title,
-      message,
-      duration: 8000,
-      ...options,
-    });
-  }
-
-  warning(title: string, message?: string, options?: Partial<Notification>) {
-    return this.show({
-      type: "warning",
-      title,
-      message,
-      duration: 6000,
-      ...options,
-    });
-  }
-
-  info(title: string, message?: string, options?: Partial<Notification>) {
-    return this.show({ type: "info", title, message, ...options });
-  }
-}
-
-export const racingNotifications = new NotificationManager();
-
-class RacingNotificationsContainer extends React.Component<
-  {},
-  NotificationState
-> {
-  private unsubscribe: (() => void) | null = null;
-
-  constructor(props: {}) {
-    super(props);
-    this.state = { notifications: [] };
-  }
-
-  componentDidMount() {
-    this.unsubscribe = racingNotifications.subscribe((notifications) => {
-      this.setState({ notifications });
-    });
-  }
-
-  componentWillUnmount() {
-    if (this.unsubscribe) {
-      this.unsubscribe();
-    }
-  }
-
-  render() {
-    const { notifications } = this.state;
-
-    if (notifications.length === 0) return null;
-
-    return (
-      <div className="fixed top-4 right-4 z-[9999] space-y-2 max-w-sm w-80 pointer-events-none">
-        {notifications.map((notification) => (
-          <div key={notification.id} className="pointer-events-auto">
-            <NotificationItem
-              notification={notification}
-              onDismiss={() => racingNotifications.dismiss(notification.id)}
-            />
-          </div>
-        ))}
-      </div>
-    );
-  }
-}
-
-interface NotificationItemProps {
-  notification: Notification;
-  onDismiss: () => void;
-}
-
-class NotificationItem extends React.Component<NotificationItemProps> {
-  componentDidMount() {
-    // Animation is now handled by CSS classes directly
-  }
-
-  componentWillUnmount() {
-    // No cleanup needed
-  }
-
-  getNotificationStyles() {
-    const { type } = this.props.notification;
-
-    switch (type) {
+const NotificationItem: React.FC<{ notification: Notification; onDismiss: (id: string) => void }> = ({
+  notification,
+  onDismiss,
+}) => {
+  const getIcon = () => {
+    switch (notification.type) {
       case "success":
-        return {
-          container:
-            "bg-green-900/20 border-green-500/30 border backdrop-blur-sm",
-          icon: "text-green-400",
-          title: "text-green-400",
-        };
+        return <CheckCircle className="h-5 w-5 text-green-400" />;
       case "error":
-        return {
-          container: "bg-red-900/20 border-red-500/30 border backdrop-blur-sm",
-          icon: "text-red-400",
-          title: "text-red-400",
-        };
+        return <AlertCircle className="h-5 w-5 text-red-400" />;
       case "warning":
-        return {
-          container:
-            "bg-yellow-900/20 border-yellow-500/30 border backdrop-blur-sm",
-          icon: "text-yellow-400",
-          title: "text-yellow-400",
-        };
+        return <AlertCircle className="h-5 w-5 text-yellow-400" />;
       case "info":
-        return {
-          container:
-            "bg-blue-900/20 border-blue-500/30 border backdrop-blur-sm",
-          icon: "text-blue-400",
-          title: "text-blue-400",
-        };
+        return <Info className="h-5 w-5 text-blue-400" />;
+      case "racing":
+        return <Zap className="h-5 w-5 text-racing-orange" />;
+      case "achievement":
+        return <Trophy className="h-5 w-5 text-racing-yellow" />;
+      case "flag":
+        return <Flag className="h-5 w-5 text-racing-red" />;
+      case "performance":
+        return <Gauge className="h-5 w-5 text-racing-green" />;
       default:
-        return {
-          container:
-            "bg-gray-800/80 border-gray-600/50 border backdrop-blur-sm",
-          icon: "text-gray-400",
-          title: "text-white",
-        };
+        return <Info className="h-5 w-5 text-blue-400" />;
     }
-  }
+  };
 
-  getIcon() {
-    const { type } = this.props.notification;
-    switch (type) {
+  const getBgColor = () => {
+    switch (notification.type) {
       case "success":
-        return CheckCircle;
+        return "bg-green-900/90 border-green-700";
       case "error":
-        return AlertTriangle;
+        return "bg-red-900/90 border-red-700";
       case "warning":
-        return AlertTriangle;
+        return "bg-yellow-900/90 border-yellow-700";
       case "info":
-        return Info;
+        return "bg-blue-900/90 border-blue-700";
+      case "racing":
+        return "bg-racing-orange/90 border-racing-orange";
+      case "achievement":
+        return "bg-racing-yellow/90 border-racing-yellow";
+      case "flag":
+        return "bg-racing-red/90 border-racing-red";
+      case "performance":
+        return "bg-racing-green/90 border-racing-green";
       default:
-        return Zap;
+        return "bg-gray-900/90 border-gray-700";
     }
-  }
+  };
 
-  render() {
-    const { notification, onDismiss } = this.props;
-    const styles = this.getNotificationStyles();
-    const Icon = this.getIcon();
-
-    return (
-      <div
-        id={notification.id}
-        className={`${styles.container} rounded-lg p-4 shadow-2xl relative overflow-hidden group transform transition-all duration-300 ease-out`}
-        style={{
-          animation: "slide-in-from-right 0.4s ease-out forwards",
-          boxShadow:
-            "0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.05)",
-        }}
-      >
-        {/* Enhanced border glow effect */}
-        <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <div className="absolute inset-0 rounded-lg border border-white/10" />
+  return (
+    <div
+      className={cn(
+        "p-4 rounded-lg border backdrop-blur-sm shadow-lg transform transition-all duration-300 animate-in slide-in-from-right",
+        getBgColor()
+      )}
+    >
+      <div className="flex items-start gap-3">
+        {getIcon()}
+        <div className="flex-1 min-w-0">
+          <h4 className="font-semibold text-white mb-1">{notification.title}</h4>
+          <p className="text-sm text-gray-200 mb-3">{notification.message}</p>
+          
+          {notification.actions && notification.actions.length > 0 && (
+            <div className="flex gap-2">
+              {notification.actions.map((action, index) => (
+                <button
+                  key={index}
+                  onClick={action.action}
+                  className={cn(
+                    "px-3 py-1 rounded text-xs font-medium transition-colors",
+                    action.style === "primary" && "bg-racing-orange hover:bg-racing-orange/80 text-white",
+                    action.style === "secondary" && "bg-gray-700 hover:bg-gray-600 text-white",
+                    action.style === "danger" && "bg-red-600 hover:bg-red-700 text-white",
+                    !action.style && "bg-gray-700 hover:bg-gray-600 text-white"
+                  )}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-
-        <div className="relative z-10 flex items-start gap-3">
-          <div className={`flex-shrink-0 mt-0.5 ${styles.icon}`}>
-            <Icon className="h-5 w-5" />
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <h4
-              className={`font-semibold text-sm ${styles.title} leading-tight`}
-            >
-              {notification.title}
-            </h4>
-            {notification.message && (
-              <p className="text-sm text-gray-300 mt-1 leading-snug">
-                {notification.message}
-              </p>
-            )}
-
-            {notification.actions && notification.actions.length > 0 && (
-              <div className="flex gap-2 mt-3">
-                {notification.actions.map((action, index) => (
-                  <button
-                    key={index}
-                    onClick={() => {
-                      action.action();
-                      onDismiss();
-                    }}
-                    className={`text-xs px-3 py-1.5 rounded transition-all duration-200 font-medium ${
-                      action.style === "primary"
-                        ? "bg-racing-orange/20 hover:bg-racing-orange/30 text-racing-orange border border-racing-orange/30 hover:border-racing-orange/50"
-                        : "bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 hover:text-white border border-gray-600/30 hover:border-gray-500/50"
-                    }`}
-                  >
-                    {action.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={onDismiss}
-            className="flex-shrink-0 text-gray-400 hover:text-white transition-colors duration-200 p-1 -m-1 rounded hover:bg-white/10"
-            aria-label="Dismiss notification"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+        <button
+          onClick={() => onDismiss(notification.id)}
+          className="text-gray-400 hover:text-white transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
-    );
-  }
-}
+    </div>
+  );
+};
 
-export function RacingNotifications() {
-  return <RacingNotificationsContainer />;
-}
-
-// Export for easy use in components
-export { racingNotifications as notify };
+// Convenience functions
+export const notify = {
+  success: (title: string, message: string, options?: Partial<Notification>) => {
+    // This will be used with the context
+    console.log("Success notification:", title, message);
+  },
+  error: (title: string, message: string, options?: Partial<Notification>) => {
+    console.log("Error notification:", title, message);
+  },
+  warning: (title: string, message: string, options?: Partial<Notification>) => {
+    console.log("Warning notification:", title, message);
+  },
+  info: (title: string, message: string, options?: Partial<Notification>) => {
+    console.log("Info notification:", title, message);
+  },
+  racing: (title: string, message: string, options?: Partial<Notification>) => {
+    console.log("Racing notification:", title, message);
+  },
+  achievement: (title: string, message: string, options?: Partial<Notification>) => {
+    console.log("Achievement notification:", title, message);
+  },
+  flag: (title: string, message: string, options?: Partial<Notification>) => {
+    console.log("Flag notification:", title, message);
+  },
+  performance: (title: string, message: string, options?: Partial<Notification>) => {
+    console.log("Performance notification:", title, message);
+  },
+};

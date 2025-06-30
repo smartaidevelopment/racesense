@@ -2,6 +2,7 @@
 // Professional track database with search, filtering, and detailed information
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,12 +39,16 @@ import {
   Info,
   Star,
   Users,
+  Plus,
 } from "lucide-react";
 
 import { RacingTrack, TrackSearchFilters } from "../types/track";
 import trackService from "../services/TrackService";
+import { useNotifications } from "@/components/RacingNotifications";
 
 const TracksPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { notify } = useNotifications();
   const [tracks, setTracks] = useState<RacingTrack[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<TrackSearchFilters>({});
@@ -72,6 +77,47 @@ const TracksPage: React.FC = () => {
     const allTracks = trackService.getAllTracks();
     return [...new Set(allTracks.map((track) => track.country))].sort();
   }, []);
+
+  // Get Finnish tracks for special section
+  const finnishTracks = useMemo(() => {
+    return tracks.filter(track => track.country === "Finland");
+  }, [tracks]);
+
+  // Get featured tracks (including KymiRing)
+  const featuredTracks = useMemo(() => {
+    const allTracks = trackService.getAllTracks();
+    return allTracks.filter(track => 
+      track.id === "kymiring" || 
+      track.type === "formula1" || 
+      track.type === "motogp"
+    ).slice(0, 6);
+  }, []);
+
+  // Get custom tracks from localStorage
+  const customTracks = useMemo(() => {
+    try {
+      const savedTracks = JSON.parse(localStorage.getItem("customTracks") || "[]");
+      return savedTracks || [];
+    } catch (error) {
+      console.error("Error loading custom tracks:", error);
+      return [];
+    }
+  }, []);
+
+  // Handle create new track
+  const handleCreateTrack = () => {
+    navigate("/track-creator", { 
+      state: { 
+        returnTo: "/tracks",
+        mode: "Track Creation"
+      } 
+    });
+    notify({
+      type: "info",
+      title: "Track Creator",
+      message: "Opening interactive track design tool",
+    });
+  };
 
   // Format track length
   const formatLength = (meters: number): string => {
@@ -130,12 +176,24 @@ const TracksPage: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-red-500 to-blue-500 bg-clip-text text-transparent">
-            Racing Tracks Database
-          </h1>
-          <p className="text-gray-400 text-lg">
-            Comprehensive database of professional racing circuits worldwide
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-red-500 to-blue-500 bg-clip-text text-transparent">
+                Racing Tracks Database
+              </h1>
+              <p className="text-gray-400 text-lg">
+                Comprehensive database of professional racing circuits worldwide
+              </p>
+            </div>
+            <Button
+              onClick={handleCreateTrack}
+              size="lg"
+              className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Create New Track
+            </Button>
+          </div>
         </div>
 
         {/* Quick Stats */}
@@ -201,6 +259,20 @@ const TracksPage: React.FC = () => {
                 className="border-gray-600 text-white hover:bg-gray-700"
               >
                 Clear All
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setFilters({ country: "Finland" })}
+                className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
+              >
+                🇫🇮 Finnish Tracks
+              </Button>
+              <Button
+                onClick={handleCreateTrack}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Track
               </Button>
             </div>
 
@@ -308,6 +380,302 @@ const TracksPage: React.FC = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Finnish Tracks Section */}
+        {finnishTracks.length > 0 && (
+          <Card className="bg-gradient-to-r from-blue-900/50 to-white/10 border-blue-500/30 mb-6">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                🇫🇮 Finnish Racing Circuits
+                <Badge className="bg-blue-500 text-white">Featured</Badge>
+              </CardTitle>
+              <p className="text-gray-300">
+                Professional racing circuits from Finland, including the world-class KymiRing MotoGP venue
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {finnishTracks.map((track) => (
+                  <Dialog key={track.id}>
+                    <DialogTrigger asChild>
+                      <Card 
+                        className={`border transition-colors cursor-pointer ${
+                          track.id === "kymiring" 
+                            ? "bg-gradient-to-r from-orange-900/50 to-red-900/50 border-orange-500/50 hover:from-orange-800/50 hover:to-red-800/50" 
+                            : "bg-gray-800/80 border-gray-700 hover:bg-gray-750"
+                        }`}
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex justify-between items-start mb-2">
+                            <CardTitle className="text-lg font-bold text-white">
+                              {track.name}
+                              {track.id === "kymiring" && (
+                                <Badge className="ml-2 bg-orange-500 text-white text-xs">
+                                  MotoGP
+                                </Badge>
+                              )}
+                            </CardTitle>
+                            {track.metadata.safety.fiaGrade && (
+                              <Badge className="bg-yellow-500 text-black text-xs">
+                                FIA Grade {track.metadata.safety.fiaGrade}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex gap-2 flex-wrap">
+                            <Badge
+                              className={`${getTypeBadgeColor(track.type)} text-white text-xs`}
+                            >
+                              {track.type.toUpperCase()}
+                            </Badge>
+                            <Badge
+                              className={`${getCategoryBadgeColor(track.category)} text-xs`}
+                            >
+                              {track.category}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-center gap-2 text-gray-300">
+                              <MapPin className="h-4 w-4 text-blue-400" />
+                              {track.city}, {track.country}
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-300">
+                              <Ruler className="h-4 w-4 text-green-400" />
+                              {formatLength(track.metadata.length)}
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-300">
+                              <Calendar className="h-4 w-4 text-purple-400" />
+                              Est. {track.established}
+                            </div>
+                            {track.metadata.lapRecord && (
+                              <div className="flex items-center gap-2 text-gray-300">
+                                <Trophy className="h-4 w-4 text-yellow-400" />
+                                {formatLapTime(track.metadata.lapRecord.time)}
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </DialogTrigger>
+                    <DialogContent className="bg-gray-900 border-gray-700 max-w-4xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="text-white flex items-center gap-2">
+                          {track.name}
+                          {track.id === "kymiring" && (
+                            <Badge className="bg-orange-500 text-white">MotoGP Venue</Badge>
+                          )}
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-6">
+                        {/* Track Details */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                            <div>
+                              <h3 className="text-lg font-semibold text-white mb-2">Track Information</h3>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Length:</span>
+                                  <span className="text-white">{formatLength(track.metadata.length)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Surface:</span>
+                                  <span className="text-white">{track.metadata.surface}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Direction:</span>
+                                  <span className="text-white capitalize">{track.metadata.direction}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Elevation:</span>
+                                  <span className="text-white">{track.metadata.elevation}m</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Established:</span>
+                                  <span className="text-white">{track.established}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {track.metadata.lapRecord && (
+                              <div>
+                                <h3 className="text-lg font-semibold text-white mb-2">Lap Record</h3>
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-400">Time:</span>
+                                    <span className="text-white font-mono">{formatLapTime(track.metadata.lapRecord.time)}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-400">Driver:</span>
+                                    <span className="text-white">{track.metadata.lapRecord.driver}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-400">Vehicle:</span>
+                                    <span className="text-white">{track.metadata.lapRecord.vehicle}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-400">Year:</span>
+                                    <span className="text-white">{track.metadata.lapRecord.year}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-4">
+                            <div>
+                              <h3 className="text-lg font-semibold text-white mb-2">Safety & Facilities</h3>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">FIA Grade:</span>
+                                  <span className="text-white">{track.metadata.safety.fiaGrade || "N/A"}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Pit Boxes:</span>
+                                  <span className="text-white">{track.metadata.facilities.pitBoxes}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Capacity:</span>
+                                  <span className="text-white">{track.metadata.facilities.capacity.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-400">Grandstands:</span>
+                                  <span className="text-white">{track.metadata.facilities.grandstands}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {track.website && (
+                              <div>
+                                <h3 className="text-lg font-semibold text-white mb-2">More Information</h3>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => window.open(track.website, '_blank')}
+                                  className="border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white"
+                                >
+                                  Visit Official Website
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Track Sectors */}
+                        {track.sectors && track.sectors.length > 0 && (
+                          <div>
+                            <h3 className="text-lg font-semibold text-white mb-4">Track Sectors</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {track.sectors.map((sector) => (
+                                <Card key={sector.id} className="bg-gray-800 border-gray-700">
+                                  <CardContent className="p-4">
+                                    <h4 className="font-semibold text-white mb-2">{sector.name}</h4>
+                                    <div className="space-y-1 text-sm">
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-400">Length:</span>
+                                        <span className="text-white">{formatLength(sector.length)}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-400">Type:</span>
+                                        <span className="text-white capitalize">{sector.type}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-400">Difficulty:</span>
+                                        <span className="text-white capitalize">{sector.difficulty}</span>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Custom Tracks Section */}
+        {customTracks.length > 0 && (
+          <Card className="bg-gradient-to-r from-purple-900/50 to-white/10 border-purple-500/30 mb-6">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                🎨 Your Custom Tracks
+                <Badge className="bg-purple-500 text-white">Custom</Badge>
+              </CardTitle>
+              <p className="text-gray-300">
+                Tracks you've created with our interactive track designer
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {customTracks.map((track) => (
+                  <Card
+                    key={track.id}
+                    className="bg-gray-800/80 border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer"
+                    onClick={() => {
+                      // Navigate to track creator to edit this track
+                      navigate("/track-creator", { 
+                        state: { 
+                          editTrack: track,
+                          returnTo: "/tracks"
+                        } 
+                      });
+                    }}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex justify-between items-start mb-2">
+                        <CardTitle className="text-lg font-bold text-white">
+                          {track.name}
+                        </CardTitle>
+                        <Badge className="bg-purple-500 text-white text-xs">
+                          Custom
+                        </Badge>
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        <Badge className="bg-purple-500 text-white text-xs">
+                          {track.surface.toUpperCase()}
+                        </Badge>
+                        <Badge className="bg-blue-500 text-white text-xs">
+                          {track.direction}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <MapPin className="h-4 w-4 text-blue-400" />
+                          {track.city}, {track.country}
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <Ruler className="h-4 w-4 text-green-400" />
+                          {(track.length / 1000).toFixed(2)} km
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <Plus className="h-4 w-4 text-purple-400" />
+                          {track.points.length} points
+                        </div>
+                        {track.sectors.length > 0 && (
+                          <div className="flex items-center gap-2 text-gray-300">
+                            <Clock className="h-4 w-4 text-yellow-400" />
+                            {track.sectors.length} sectors
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <Calendar className="h-4 w-4 text-gray-400" />
+                          Created {new Date(track.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Results Header */}
         <div className="flex justify-between items-center mb-6">

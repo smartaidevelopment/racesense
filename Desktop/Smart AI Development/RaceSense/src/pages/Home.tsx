@@ -1,290 +1,319 @@
-import { Layout } from "@/components/Layout";
-import { RacingButton } from "@/components/RacingButton";
-import { DataCard } from "@/components/DataCard";
-import { Card } from "@/components/ui/card";
-import { notify } from "@/components/RacingNotifications";
-import {
-  Upload,
-  Play,
-  Clock,
-  Trophy,
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Play, 
+  Upload, 
+  BarChart3, 
+  Settings, 
+  Zap, 
+  Trophy, 
+  Target, 
+  Smartphone,
+  Users,
+  MapPin,
+  Gauge,
   TrendingUp,
-  Zap,
-  Bell,
+  Mic
 } from "lucide-react";
+import { useNotifications } from "@/components/RacingNotifications";
+import { useVoiceAI } from '@/services/VoiceAIService';
 
-export default function Home() {
+const Home: React.FC = () => {
+  const navigate = useNavigate();
+  const { notify } = useNotifications();
+  const { speak, isListening, startVoiceRecognition, stopVoiceRecognition } = useVoiceAI();
+
+  const handleStartSession = () => {
+    notify({
+      type: "racing",
+      title: "Starting Session",
+      message: "Preparing your racing telemetry setup...",
+      duration: 3000
+    });
+    navigate("/new-session");
+  };
+
+  const handleUploadSession = () => {
+    notify({
+      type: "info",
+      title: "Upload Session",
+      message: "Opening session upload interface...",
+      duration: 3000
+    });
+    navigate("/data-management");
+  };
+
+  const quickActions = [
+    {
+      title: "Live Session",
+      description: "Start real-time telemetry",
+      icon: <Play className="h-6 w-6" />,
+      action: () => navigate("/telemetry"),
+      color: "bg-racing-orange",
+      badge: "Popular"
+    },
+    {
+      title: "Upload Data",
+      description: "Import session files",
+      icon: <Upload className="h-6 w-6" />,
+      action: () => navigate("/data-management"),
+      color: "bg-racing-blue"
+    },
+    {
+      title: "Analysis",
+      description: "Review past sessions",
+      icon: <BarChart3 className="h-6 w-6" />,
+      action: () => navigate("/analysis"),
+      color: "bg-racing-green"
+    },
+    {
+      title: "Settings",
+      description: "Configure your setup",
+      icon: <Settings className="h-6 w-6" />,
+      action: () => navigate("/settings"),
+      color: "bg-racing-purple"
+    }
+  ];
+
+  const featuredModes = [
+    {
+      title: "AI Coach",
+      description: "AI-powered coaching and analysis",
+      icon: <Zap className="h-5 w-5" />,
+      route: "/drift-feedback",
+      color: "racing-orange"
+    },
+    {
+      title: "Time Attack",
+      description: "Push for fastest laps",
+      icon: <Trophy className="h-5 w-5" />,
+      route: "/telemetry",
+      color: "racing-red"
+    },
+    {
+      title: "Precision Mode",
+      description: "Perfect your racing line",
+      icon: <Target className="h-5 w-5" />,
+      route: "/advanced-analysis",
+      color: "racing-green"
+    },
+    {
+      title: "Mobile Racing",
+      description: "On-the-go telemetry",
+      icon: <Smartphone className="h-5 w-5" />,
+      route: "/mobile-racing",
+      color: "racing-blue"
+    }
+  ];
+
+  const stats = [
+    { label: "Active Sessions", value: "12", icon: <Gauge className="h-4 w-4" /> },
+    { label: "Total Laps", value: "1,247", icon: <MapPin className="h-4 w-4" /> },
+    { label: "Best Time", value: "1:23.456", icon: <Trophy className="h-4 w-4" /> },
+    { label: "Improvement", value: "+2.3s", icon: <TrendingUp className="h-4 w-4" /> }
+  ];
+
   return (
-    <Layout>
-      <div className="space-y-8">
-        {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-2xl modern-panel p-8 md:p-12">
-          <div className="absolute inset-0 bg-gradient-to-br from-racing-red/10 via-transparent to-racing-blue/10" />
-          {/* Logo stuck to left border */}
-          <div className="absolute -top-[18px] left-0 z-10">
-            <img
-              src="https://cdn.builder.io/api/v1/image/assets%2F470759060b1c4b0b916b5f9ea82a1d3c%2Fcc591e09ecaf40208de8f7e8e6da8afd"
-              alt="RaceSense Logo"
-              className="h-36 object-contain pl-5 pb-5"
-            />
-          </div>
-          <div className="relative z-10">
-            <div className="flex justify-center mb-6"></div>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl">
-              Professional racing telemetry and performance analysis. Track
-              every moment, improve every lap, master every turn.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4">
-              <RacingButton
-                variant="racing"
-                racing="red"
-                icon={Play}
-                size="lg"
-                glow
-                className="text-lg px-8 py-4"
-                onClick={() => {
-                  notify.success(
-                    "GPS Lap Timing Ready!",
-                    "Live telemetry with automatic track detection and lap timing.",
-                    {
-                      actions: [
-                        {
-                          label: "Start Recording",
-                          action: () => {
-                            window.location.href = "/telemetry-dashboard";
-                          },
-                          style: "primary",
-                        },
-                        {
-                          label: "Learn More",
-                          action: () => {
-                            notify.info(
-                              "Real Racing Features",
-                              "• GPS lap timing\n• Track auto-detection\n• Live telemetry\n• Sector analysis\n• Best lap tracking",
-                              { duration: 8000 },
-                            );
-                          },
-                        },
-                      ],
-                    },
-                  );
-                }}
-              >
-                Start Live Session
-              </RacingButton>
-              <RacingButton
-                variant="outline"
-                icon={Upload}
-                size="lg"
-                className="text-lg px-8 py-4 border-racing-blue/30 text-racing-blue hover:bg-racing-blue/10"
-                onClick={() => {
-                  notify.info(
-                    "Upload Feature",
-                    "Drag and drop your session files or browse to upload.",
-                    { duration: 4000 },
-                  );
-                }}
-              >
-                Upload Session
-              </RacingButton>
-            </div>
-          </div>
-
-          {/* Animated speed lines */}
-          <div className="absolute top-1/2 right-0 transform -translate-y-1/2 w-32 h-1 bg-gradient-to-r from-transparent to-racing-red opacity-30 animate-speed-lines" />
-          <div
-            className="absolute top-1/2 right-0 transform -translate-y-1/2 translate-y-4 w-24 h-1 bg-gradient-to-r from-transparent to-racing-orange opacity-20 animate-speed-lines"
-            style={{ animationDelay: "0.5s" }}
-          />
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <DataCard
-            label="Recent Sessions"
-            value="12"
-            icon={Clock}
-            color="blue"
-            trend="up"
-          />
-          <DataCard
-            label="Best Lap Time"
-            value="1:23.45"
-            icon={Trophy}
-            color="yellow"
-            trend="down"
-          />
-          <DataCard
-            label="Avg Performance"
-            value="94.2"
-            unit="%"
-            icon={TrendingUp}
-            color="green"
-            trend="up"
-          />
-          <DataCard
-            label="Total Distance"
-            value="847.3"
-            unit="km"
-            icon={Zap}
-            color="purple"
-          />
-        </div>
-
-        {/* Recent Activity */}
-        <Card className="p-6 bg-card/80 backdrop-blur-sm border-border/50">
-          <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
-            <TrendingUp className="h-6 w-6 text-racing-green" />
-            Recent Activity
-          </h2>
-
-          <div className="space-y-4">
-            {[
-              {
-                session: "Silverstone GP - Time Attack",
-                date: "2 hours ago",
-                performance: "+2.3s improvement",
-                color: "green" as const,
-              },
-              {
-                session: "Nürburgring - Drift Practice",
-                date: "1 day ago",
-                performance: "New drift record: 8,450 pts",
-                color: "orange" as const,
-              },
-              {
-                session: "Suzuka - Grip Track",
-                date: "3 days ago",
-                performance: "Consistent lap times",
-                color: "blue" as const,
-              },
-            ].map((activity, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group"
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className={cn(
-                      "w-3 h-3 rounded-full",
-                      activity.color === "green" && "bg-racing-green",
-                      activity.color === "orange" && "bg-racing-orange",
-                      activity.color === "blue" && "bg-racing-blue",
-                    )}
-                  />
-                  <div>
-                    <p className="font-medium group-hover:text-racing-red transition-colors">
-                      {activity.session}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {activity.date}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium text-sm">{activity.performance}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Notification System Demo */}
-        <Card className="p-6 bg-gradient-to-br from-racing-yellow/5 to-racing-orange/5 border-racing-yellow/20">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Bell className="h-5 w-5 text-racing-yellow" />
-            Racing Notifications System
-          </h2>
-          <p className="text-muted-foreground mb-6">
-            Professional racing-themed notifications with haptic feedback and
-            racing colors.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <RacingButton
-              variant="outline"
-              size="sm"
-              className="border-racing-green/30 text-racing-green hover:bg-racing-green/10"
-              onClick={() =>
-                notify.success("Lap Record!", "New personal best: 1:23.156s")
-              }
-            >
-              Success
-            </RacingButton>
-            <RacingButton
-              variant="outline"
-              size="sm"
-              className="border-racing-red/30 text-racing-red hover:bg-racing-red/10"
-              onClick={() =>
-                notify.error(
-                  "Engine Warning",
-                  "Oil temperature critical - 142°C",
-                )
-              }
-            >
-              Error
-            </RacingButton>
-            <RacingButton
-              variant="outline"
-              size="sm"
-              className="border-racing-yellow/30 text-racing-yellow hover:bg-racing-yellow/10"
-              onClick={() =>
-                notify.warning(
-                  "Tire Pressure",
-                  "Front left: 1.8 bar (below optimal)",
-                )
-              }
-            >
-              Warning
-            </RacingButton>
-            <RacingButton
-              variant="outline"
-              size="sm"
-              className="border-racing-blue/30 text-racing-blue hover:bg-racing-blue/10"
-              onClick={() =>
-                notify.info(
-                  "Weather Update",
-                  "Rain probability: 30% in 15 minutes",
-                )
-              }
-            >
-              Info
-            </RacingButton>
-          </div>
-        </Card>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="p-6 bg-gradient-to-br from-racing-red/10 to-racing-orange/10 border-racing-red/20 hover:border-racing-red/40 transition-colors group">
-            <h3 className="text-xl font-semibold mb-2 group-hover:text-racing-red transition-colors">
-              Performance Analysis
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              Dive deep into your telemetry data and discover areas for
-              improvement.
-            </p>
-            <RacingButton variant="racing" racing="red" size="sm">
-              View Analysis
-            </RacingButton>
-          </Card>
-
-          <Card className="p-6 bg-gradient-to-br from-racing-blue/10 to-racing-purple/10 border-racing-blue/20 hover:border-racing-blue/40 transition-colors group">
-            <h3 className="text-xl font-semibold mb-2 group-hover:text-racing-blue transition-colors">
-              AI Coach Feedback
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              Get personalized coaching tips based on your driving patterns.
-            </p>
-            <RacingButton variant="racing" racing="blue" size="sm">
-              Get Feedback
-            </RacingButton>
-          </Card>
+    <div className="container mx-auto px-4 py-8">
+      {/* Hero Section */}
+      <div className="text-center mb-12">
+        <h1 className="text-5xl font-bold text-white mb-4">
+          Welcome to <span className="text-racing-orange">RaceSense</span>
+        </h1>
+        <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
+          Professional racing telemetry and analysis platform. Track your performance, 
+          analyze your sessions, and push your limits with precision data.
+        </p>
+        
+        <div className="flex gap-4 justify-center mb-8">
+          <Button 
+            size="lg" 
+            className="bg-racing-orange hover:bg-racing-orange/80 text-white px-8 py-3 text-lg"
+            onClick={handleStartSession}
+          >
+            <Play className="h-5 w-5 mr-2" />
+            Start Live Session
+          </Button>
+          <Button 
+            size="lg" 
+            variant="outline" 
+            className="border-gray-600 text-gray-300 hover:bg-gray-800 px-8 py-3 text-lg"
+            onClick={handleUploadSession}
+          >
+            <Upload className="h-5 w-5 mr-2" />
+            Upload Session
+          </Button>
         </div>
       </div>
-    </Layout>
-  );
-}
 
-function cn(...classes: (string | undefined)[]): string {
-  return classes.filter(Boolean).join(" ");
-}
+      {/* Stats Section */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+        {stats.map((stat, index) => (
+          <Card key={index} className="bg-gray-900/50 border-gray-700">
+            <CardContent className="p-4 text-center">
+              <div className="flex items-center justify-center mb-2 text-racing-orange">
+                {stat.icon}
+              </div>
+              <div className="text-2xl font-bold text-white">{stat.value}</div>
+              <div className="text-sm text-gray-400">{stat.label}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="mb-12">
+        <h2 className="text-2xl font-bold text-white mb-6">Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <Button
+            onClick={() => navigate('/new-session')}
+            className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-racing-red to-red-600 hover:from-red-600 hover:to-red-700 text-white"
+          >
+            <Play className="h-6 w-6" />
+            <span className="font-semibold">Start Live Session</span>
+          </Button>
+
+          <Button
+            onClick={() => navigate('/telemetry')}
+            className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-racing-blue to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+          >
+            <Gauge className="h-6 w-6" />
+            <span className="font-semibold">Live Telemetry</span>
+          </Button>
+
+          <Button
+            onClick={() => navigate('/analysis')}
+            className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-racing-green to-green-600 hover:from-green-600 hover:to-green-700 text-white"
+          >
+            <BarChart3 className="h-6 w-6" />
+            <span className="font-semibold">Session Analysis</span>
+          </Button>
+
+          <Button
+            onClick={() => {
+              if (isListening) {
+                stopVoiceRecognition();
+                notify({
+                  type: "info",
+                  title: "Voice Control Deactivated",
+                  message: "Voice recognition has been stopped",
+                  duration: 2000
+                });
+              } else {
+                startVoiceRecognition();
+                speak("Voice control activated. Say hey racesense followed by your command.");
+              }
+            }}
+            className={`h-24 flex flex-col items-center justify-center gap-2 ${
+              isListening 
+                ? 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700' 
+                : 'bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700'
+            } text-white`}
+          >
+            {isListening ? (
+              <>
+                <Mic className="h-6 w-6 animate-pulse" />
+                <span className="font-semibold">Voice Active</span>
+              </>
+            ) : (
+              <>
+                <Mic className="h-6 w-6" />
+                <span className="font-semibold">Voice Control</span>
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Featured Modes */}
+      <div className="mb-12">
+        <h2 className="text-2xl font-bold text-white mb-6">Featured Modes</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {featuredModes.map((mode, index) => (
+            <Card 
+              key={index} 
+              className="bg-gray-900/50 border-gray-700 hover:border-racing-orange/50 transition-all duration-300 cursor-pointer group"
+              onClick={() => navigate(mode.route)}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={`text-${mode.color}`}>
+                    {mode.icon}
+                  </div>
+                  <h3 className="font-semibold text-white">{mode.title}</h3>
+                </div>
+                <p className="text-sm text-gray-400">{mode.description}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="mb-12">
+        <h2 className="text-2xl font-bold text-white mb-6">Recent Activity</h2>
+        <Card className="bg-gray-900/50 border-gray-700">
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-racing-green rounded-full"></div>
+                  <span className="text-white">Session completed - Laguna Seca</span>
+                </div>
+                <span className="text-gray-400 text-sm">2 hours ago</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-racing-orange rounded-full"></div>
+                  <span className="text-white">New personal best - Turn 3</span>
+                </div>
+                <span className="text-gray-400 text-sm">1 day ago</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-racing-blue rounded-full"></div>
+                  <span className="text-white">Hardware connected - RaceBox Mini</span>
+                </div>
+                <span className="text-gray-400 text-sm">3 days ago</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Call to Action */}
+      <div className="text-center">
+        <Card className="bg-gradient-to-r from-racing-orange/20 to-racing-red/20 border-racing-orange/30">
+          <CardContent className="p-8">
+            <h3 className="text-2xl font-bold text-white mb-4">Ready to Race?</h3>
+            <p className="text-gray-300 mb-6">
+              Connect your hardware, choose your mode, and start tracking your performance with professional-grade telemetry.
+            </p>
+            <div className="flex gap-4 justify-center">
+              <Button 
+                className="bg-racing-orange hover:bg-racing-orange/80 text-white"
+                onClick={() => navigate("/hardware")}
+              >
+                <Gauge className="h-4 w-4 mr-2" />
+                Setup Hardware
+              </Button>
+              <Button 
+                variant="outline" 
+                className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                onClick={() => navigate("/new-session")}
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Start Session
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default Home;
