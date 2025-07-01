@@ -411,23 +411,20 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & {
 
           {/* Profile Selection */}
           <Card className="p-6 bg-gradient-to-r from-gray-900/80 to-gray-800/80 border border-gray-700/60 mb-8 shadow-lg">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:gap-6">
+              <div className="flex items-center gap-3 mb-2 md:mb-0">
                 <Wrench className="h-6 w-6 text-racing-yellow" />
-                <div>
-                  <h3 className="text-xl font-semibold text-racing-yellow">Setup Profile</h3>
-                  <p className="text-muted-foreground text-sm">Load, save, copy, or delete vehicle configurations</p>
-                </div>
+                <h3 className="text-xl font-semibold text-racing-yellow">Setup Profile</h3>
               </div>
-              <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-center">
-                <div className="space-y-2 w-full md:w-auto">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full">
+                <div className="flex-1 min-w-[160px]">
                   <Label htmlFor="profile">Current Profile</Label>
                   <select
                     id="profile"
                     name="profile"
                     value={currentProfile}
                     onChange={(e) => this.handleProfileChange(e.target.value)}
-                    className="px-3 py-2 bg-background/60 border border-border/50 rounded-md text-white min-w-[200px] focus:ring-2 focus:ring-racing-orange"
+                    className="w-full px-3 py-2 bg-background/60 border border-border/50 rounded-md text-white focus:ring-2 focus:ring-racing-orange"
                   >
                     {this.savedProfiles.map((profile) => (
                       <option key={profile} value={profile}>
@@ -436,7 +433,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & {
                     ))}
                   </select>
                 </div>
-                <div className="space-y-2 w-full md:w-auto">
+                <div className="flex-1 min-w-[160px]">
                   <Label htmlFor="profileNameInput">Profile Name</Label>
                   <input
                     id="profileNameInput"
@@ -444,11 +441,11 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & {
                     type="text"
                     value={profileNameInput ?? setup.name}
                     onChange={this.handleProfileNameInput}
-                    className="px-3 py-2 bg-background/60 border border-border/50 rounded-md text-white min-w-[200px] focus:ring-2 focus:ring-racing-orange"
+                    className="w-full px-3 py-2 bg-background/60 border border-border/50 rounded-md text-white focus:ring-2 focus:ring-racing-orange"
                     placeholder="Enter profile name"
                   />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-end">
                   <RacingButton size="sm" variant="default" title="Save Profile" onClick={this.saveSetup}>
                     <Save className="h-4 w-4" /> Save
                   </RacingButton>
