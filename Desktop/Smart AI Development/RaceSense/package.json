@@ -38,6 +38,9 @@
     "@radix-ui/react-toast": "^1.2.14",
     "@radix-ui/react-toggle": "^1.1.9",
     "@radix-ui/react-toggle-group": "^1.1.10",
+    "@react-three/drei": "^10.3.0",
+    "@react-three/fiber": "^9.1.4",
+    "@types/three": "^0.177.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "gps": "^0.7.4",
@@ -50,6 +53,7 @@
     "recharts": "^3.0.2",
     "serialport": "^13.0.0",
     "tailwind-merge": "^2.2.1",
+    "three": "^0.178.0",
     "web-speech-recognition": "^0.7.2"
   },
   "devDependencies": {

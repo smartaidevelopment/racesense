@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-// Radix UI Tabs removed to prevent hook issues
 import {
   Box,
   Map,
@@ -39,6 +38,8 @@ import {
   RacingLine,
 } from "@/services/VisualizationService";
 import { dataManagementService } from "@/services/DataManagementService";
+import { trackGeometryService, TrackGeometry } from "@/services/TrackGeometryService";
+import Track3DViewer from "@/components/3D/Track3DViewer";
 
 const AdvancedVisualization: React.FC = () => {
   const [selectedSession, setSelectedSession] = useState("");
@@ -52,7 +53,9 @@ const AdvancedVisualization: React.FC = () => {
   const [animationPlaying, setAnimationPlaying] = useState(false);
   const [animationSpeed, setAnimationSpeed] = useState(1);
   const [selectedHeatMapType, setSelectedHeatMapType] = useState("speed");
-  const [selectedTrack, setSelectedTrack] = useState("Silverstone");
+  const [selectedTrack, setSelectedTrack] = useState("silverstone");
+  const [availableTracks, setAvailableTracks] = useState<TrackGeometry[]>([]);
+  const [currentTrack, setCurrentTrack] = useState<TrackGeometry | null>(null);
   const [visualizationSettings, setVisualizationSettings] = useState({
     lighting: { ambient: 0.4, directional: 0.8, shadows: true },
     colors: {
@@ -83,7 +86,7 @@ const AdvancedVisualization: React.FC = () => {
 
   useEffect(() => {
     loadData();
-    initialize3DVisualization();
+    loadTrackData();
 
     return () => {
       if (animationFrame.current) {
@@ -108,6 +111,20 @@ const AdvancedVisualization: React.FC = () => {
     } catch (error) {
       console.error("Failed to load visualization data:", error);
       setIsLoading(false);
+    }
+  };
+
+  const loadTrackData = async () => {
+    try {
+      const tracks = await trackGeometryService.getAllTracks();
+      setAvailableTracks(tracks);
+      
+      if (tracks.length > 0) {
+        const track = await trackGeometryService.getTrackGeometry(selectedTrack);
+        setCurrentTrack(track);
+      }
+    } catch (error) {
+      console.error("Failed to load track data:", error);
     }
   };
 
@@ -438,12 +455,16 @@ const AdvancedVisualization: React.FC = () => {
     }, 100);
   };
 
-  const handleTrackChange = async (trackName: string) => {
-    setSelectedTrack(trackName);
+  const handleTrackChange = async (trackId: string) => {
+    setSelectedTrack(trackId);
     setIsLoading(true);
 
     try {
-      const track3D = await visualizationService.generateTrack3D(trackName);
+      const track = await trackGeometryService.getTrackGeometry(trackId);
+      setCurrentTrack(track);
+      
+      // Also load legacy track data for compatibility
+      const track3D = await visualizationService.generateTrack3D(trackId);
       setTrack3D(track3D);
       setIsLoading(false);
       render3DScene();
@@ -635,13 +656,11 @@ const AdvancedVisualization: React.FC = () => {
                       onChange={(e) => handleTrackChange(e.target.value)}
                       className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
                     >
-                      <option value="Silverstone">Silverstone</option>
-                      <option value="Spa-Francorchamps">
-                        Spa-Francorchamps
-                      </option>
-                      <option value="Monza">Monza</option>
-                      <option value="Nürburgring">Nürburgring</option>
-                      <option value="Suzuka">Suzuka</option>
+                      {availableTracks.map(track => (
+                        <option key={track.id} value={track.id}>
+                          {track.name} - {track.country}
+                        </option>
+                      ))}
                     </select>
                   </CardContent>
                 </Card>
@@ -789,12 +808,25 @@ const AdvancedVisualization: React.FC = () => {
             </div>
           </div>
 
-          {/* Main Canvas */}
-          <canvas
-            ref={canvasRef}
-            className="w-full h-full"
-            style={{ background: "#1a1a1a" }}
-          />
+          {/* 3D Visualization */}
+          <div className="w-full h-full">
+            {isLoading ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+              </div>
+            ) : (
+              <Track3DViewer
+                trackId={selectedTrack}
+                sessionData={sessions.find(s => s.id === selectedSession)}
+                showHeatMap={layersVisible.heatMap}
+                showRacingLine={layersVisible.racingLine}
+                showSectors={layersVisible.sectors}
+                showCorners={layersVisible.corners}
+                showDRSZones={false}
+                onTrackLoaded={setCurrentTrack}
+              />
+            )}
+          </div>
 
           {/* Loading Overlay */}
           {isLoading && (

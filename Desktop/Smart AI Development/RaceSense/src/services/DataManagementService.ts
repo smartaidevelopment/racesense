@@ -13,6 +13,7 @@ export interface TelemetryPoint {
   rpm?: number;
   throttle?: number; // 0-100%
   brake?: number; // 0-100%
+  steering?: number; // -100 to 100 (left to right)
   gear?: number;
   engineTemp?: number; // Celsius
   gForce?: {
@@ -26,6 +27,8 @@ export interface TelemetryPoint {
     rearLeft: number;
     rearRight: number;
   };
+  lapNumber?: number;
+  sector?: number;
 }
 
 export interface SessionData {

@@ -230,6 +230,22 @@ export class VisualizationService {
         return track;
       }
 
+      // Try to load from real track geometry service first
+      try {
+        const realTrack = await import('@/services/TrackGeometryService').then(m => 
+          m.trackGeometryService.getTrackGeometry(trackName)
+        );
+        
+        if (realTrack) {
+          // Convert real track geometry to legacy format for compatibility
+          track = this.convertRealTrackToLegacy(realTrack);
+          this.track3DModels.set(trackName, track);
+          return track;
+        }
+      } catch (error) {
+        console.log('Real track geometry not available, falling back to generated model');
+      }
+
       // Generate 3D model for the track
       track = await this.create3DTrackModel(trackName);
       this.track3DModels.set(trackName, track);
@@ -263,6 +279,55 @@ export class VisualizationService {
       surfaceTypes: [],
       corners: [],
       drsZones: [],
+    };
+  }
+
+  private convertRealTrackToLegacy(realTrack: any): Track3DModel {
+    // Convert real track geometry to legacy Track3DModel format
+    return {
+      id: realTrack.id,
+      name: realTrack.name,
+      meshData: new Float32Array([0, 0, 0, 100, 0, 0, 100, 100, 0, 0, 100, 0]), // Simplified
+      textureUrls: [],
+      startFinishLine: [
+        { x: 0, y: 0, z: 0 },
+        { x: 10, y: 0, z: 0 },
+      ],
+      sectorLines: realTrack.sectors.map((sector: any) => [
+        { x: sector.startPoint.lng * 111000, y: 0, z: -sector.startPoint.lat * 111000 },
+        { x: sector.endPoint.lng * 111000, y: 0, z: -sector.endPoint.lat * 111000 }
+      ]),
+      trackBounds: {
+        center: { x: 0, y: 0, z: 0 },
+        dimensions: { width: realTrack.layout.length, height: realTrack.layout.length, depth: 10 },
+      },
+      elevation: new Float32Array(realTrack.elevation.map((e: any) => e.elevation)),
+      surfaceTypes: realTrack.surface.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        gripLevel: s.gripLevel,
+        color: s.color,
+        geometry: new Float32Array([0, 0, 0, 100, 0, 0, 100, 100, 0, 0, 100, 0])
+      })),
+      corners: realTrack.corners.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        number: c.number,
+        type: c.type,
+        entryPoint: { x: c.entryPoint.lng * 111000, y: 0, z: -c.entryPoint.lat * 111000 },
+        exitPoint: { x: c.exitPoint.lng * 111000, y: 0, z: -c.exitPoint.lat * 111000 },
+        idealSpeed: c.idealSpeed,
+        brakingZone: { start: c.brakingZone.start, end: c.brakingZone.end },
+        difficulty: c.difficulty
+      })),
+      drsZones: realTrack.drsZones.map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        detectionPoint: { x: d.detectionPoint.lng * 111000, y: 0, z: -d.detectionPoint.lat * 111000 },
+        activationPoint: { x: d.activationPoint.lng * 111000, y: 0, z: -d.activationPoint.lat * 111000 },
+        endPoint: { x: d.endPoint.lng * 111000, y: 0, z: -d.endPoint.lat * 111000 },
+        length: d.length
+      })),
     };
   }
 
