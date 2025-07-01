@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader } from "@googlemaps/js-api-loader";
 import { Timer, Trash2, Plus, Globe, Save, ArrowLeft, Info, Flag, MapPin } from "lucide-react";
 import { useNotifications } from "@/components/RacingNotifications";
+import { useNavigate } from "react-router-dom";
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyA5ondxplwoNnMztrYiYnr2Gs8Uwm-8MLk";
 
@@ -35,6 +36,7 @@ interface CustomTrack {
 
 const TrackCreator: React.FC = () => {
   const { notify } = useNotifications();
+  const navigate = useNavigate();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const sectorMarkersRef = useRef<any[]>([]);
@@ -128,31 +130,7 @@ const TrackCreator: React.FC = () => {
     };
   }, []);
 
-  // Test function to add sector at map center
-  const addSectorAtCenter = () => {
-    if (!mapInstanceRef.current) return;
-    const center = mapInstanceRef.current.getCenter();
-    if (center) {
-      const lat = center.lat();
-      const lng = center.lng();
-      const currentSectorsCount = sectorsCountRef.current;
-      const newPoint: SectorPoint = {
-        id: Date.now().toString(),
-        lat,
-        lng,
-        name: `Sector Point ${currentSectorsCount * 2 + 1}`,
-      };
-      const newSector = {
-        id: currentSectorsCount + 1,
-        name: `Sector ${currentSectorsCount + 1}`,
-        startPoint: newPoint,
-        endPoint: { ...newPoint, id: (Date.now() + 1).toString() },
-        length: 0,
-      };
-      setTrack(prev => ({ ...prev, sectors: [...prev.sectors, newSector] }));
-      notify({ type: "success", title: "Sector Added", message: `Added sector at center: ${lat.toFixed(6)}, ${lng.toFixed(6)}` });
-    }
-  };
+
 
   // Add start/finish line at map center
   const addStartFinishAtCenter = () => {
@@ -457,6 +435,11 @@ const TrackCreator: React.FC = () => {
     });
   };
 
+  // Navigate back to mode selection
+  const handleBackToModeSelection = () => {
+    navigate('/mode-selection');
+  };
+
   // Save track (dummy, just notifies)
   const handleSaveTrack = () => {
     if (!trackName.trim()) {
@@ -567,9 +550,9 @@ const TrackCreator: React.FC = () => {
                     >
                       <Timer className="h-3 w-3 sm:h-4 sm:w-4" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
+                                          <Button
+                        variant="outline"
+                        size="sm"
                       onClick={getCurrentLocation}
                       className="border-blue-600/50 text-blue-400 hover:bg-blue-400/10 transition-all duration-200"
                       title="Get Current Location"
@@ -577,18 +560,29 @@ const TrackCreator: React.FC = () => {
                     >
                       <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
                       <span className="hidden sm:inline">{locationLoading ? "Loading..." : "Location"}</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={addSectorAtCenter}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                      onClick={addStartFinishAtCenter}
                       className="border-green-600/50 text-green-400 hover:bg-green-400/10 transition-all duration-200"
-                      title="Test: Add Sector at Center"
+                      title="Add Start/Finish at Center"
                       disabled={!mapReady}
-                    >
-                      <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="hidden sm:inline">Test Add</span>
-                    </Button>
+                      >
+                        <Flag className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Start/Finish</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                      onClick={addSectorAtMapCenter}
+                      className="border-yellow-600/50 text-yellow-400 hover:bg-yellow-400/10 transition-all duration-200"
+                      title="Add Sector at Center"
+                      disabled={!mapReady}
+                      >
+                        <Timer className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Add Sector</span>
+                      </Button>
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -656,40 +650,22 @@ const TrackCreator: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Quick Action Buttons */}
-            <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-3">
+                        {/* Quick Actions Info */}
+                <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center gap-3">
                   <div className="p-2 bg-blue-500/20 rounded-lg">
-                    <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
-                  </div>
+                    <Info className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
+                      </div>
                   <span className="text-sm sm:text-base">Quick Actions</span>
-                </CardTitle>
-              </CardHeader>
+                    </CardTitle>
+                  </CardHeader>
               <CardContent className="space-y-3">
-                <Button
-                  onClick={addStartFinishAtCenter}
-                  className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg shadow-green-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
-                  disabled={!mapReady}
-                >
-                  <Flag className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  <span className="hidden sm:inline">Add Start/Finish</span>
-                  <span className="sm:hidden">Start/Finish</span>
-                </Button>
-                <Button
-                  onClick={addSectorAtMapCenter}
-                  className="w-full bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-700 hover:to-yellow-600 text-white shadow-lg shadow-yellow-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
-                  disabled={!mapReady}
-                >
-                  <Timer className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  <span className="hidden sm:inline">Add Sector</span>
-                  <span className="sm:hidden">Add Sector</span>
-                </Button>
-                <div className="text-xs text-gray-400 text-center pt-2">
-                  Use "Location" button to get your current position first
-                </div>
-              </CardContent>
-            </Card>
+                                <div className="text-xs text-gray-400 text-center">
+                  Use the buttons in the map controls above to add sectors and start/finish lines
+                              </div>
+                  </CardContent>
+                </Card>
 
             <Tabs defaultValue="sectors" className="w-full">
               <TabsList className="grid w-full grid-cols-1 bg-gradient-to-r from-gray-800 to-gray-900 border border-gray-700/50 p-1 rounded-lg">
@@ -782,9 +758,10 @@ const TrackCreator: React.FC = () => {
               <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
                 <Button
                   variant="outline"
-                  className="w-full border-gray-600/50 text-gray-300 hover:bg-gray-700/50 transition-all duration-200 text-sm sm:text-base"
+                  onClick={handleBackToModeSelection}
+                  className="w-full border-gray-600/50 text-gray-300 hover:bg-gray-700/50 transition-all duration-200 text-xs sm:text-sm"
                 >
-                  <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                   <span className="hidden sm:inline">Back to Mode Selection</span>
                   <span className="sm:hidden">Back</span>
                 </Button>

@@ -136,8 +136,8 @@ const ModeSelection: React.FC = () => {
       badge: "Popular"
     },
     {
-      id: "practice-mode",
-      name: "Practice Mode",
+      id: "drug-mode",
+      name: "Drug Mode",
       description: "Focused training with detailed analysis",
       icon: Target,
       color: "from-blue-500 to-cyan-600",
