@@ -343,6 +343,71 @@ app.post('/api/ai/coaching-recommendations', (req, res) => {
   res.json({ status: 'ok', input: req.body, message: 'Coaching recommendations endpoint hit (scaffold).' });
 });
 
+// --- AI Coach Endpoints ---
+app.post('/api/ai/coach/insight', (req, res) => {
+  // Return an array of AIInsight objects (mock)
+  res.json([
+    {
+      id: `insight-${Date.now()}`,
+      timestamp: Date.now(),
+      type: "improvement",
+      priority: "medium",
+      title: "Mock Insight",
+      description: "This is a mock AI insight for testing.",
+      recommendation: "Try braking later in sector 2.",
+      potentialTimeGain: 0.3,
+      category: "braking",
+      confidence: 0.8,
+    },
+  ]);
+});
+
+app.post('/api/ai/coach/analysis', (req, res) => {
+  // Return a PerformanceAnalysis object (mock)
+  res.json({
+    sessionId: req.body.sessionId || `session-${Date.now()}`,
+    lapCount: req.body.sessionLaps ? req.body.sessionLaps.length : 3,
+    overallRating: 85,
+    consistency: {
+      rating: 80,
+      lapTimeVariance: 0.5,
+      sectorConsistency: [90, 85, 80],
+    },
+    racingLineEfficiency: {
+      rating: 78,
+      deviationMetrics: [2.1, 1.8, 2.5],
+    },
+    strengths: ["Good throttle control", "Consistent lap times"],
+    improvementAreas: [
+      {
+        category: "Braking",
+        impact: "medium",
+        timeGain: 0.2,
+        description: "Brake later in sector 2 for better lap times.",
+      },
+    ],
+  });
+});
+
+app.post('/api/ai/coach/prediction', (req, res) => {
+  // Return a PredictiveLapTime object (mock)
+  res.json({
+    sessionId: req.body.sessionId || `session-${Date.now()}`,
+    predictedTime: 85.123,
+    optimisticTime: 84.500,
+    conservativeTime: 86.000,
+    confidence: 92,
+    factorsConsidered: {
+      driverForm: 80,
+      trackConditions: 85,
+      vehicleSetup: 78,
+      weatherImpact: 90,
+      consistency: 0.02,
+    },
+    improvementPotential: 0.6,
+  });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
