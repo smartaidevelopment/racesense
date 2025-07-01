@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader } from "@googlemaps/js-api-loader";
 import { Timer, Trash2, Plus, Globe, Save, ArrowLeft, Info, Flag, MapPin } from "lucide-react";
@@ -58,6 +59,7 @@ const TrackCreator: React.FC = () => {
   const [mapReady, setMapReady] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [trackName, setTrackName] = useState("");
 
   // Update sectors count ref whenever sectors change
   useEffect(() => {
@@ -311,133 +313,99 @@ const TrackCreator: React.FC = () => {
     // Remove old markers
     sectorMarkersRef.current.forEach(m => m.setMap(null));
     const newSectorMarkers: any[] = [];
+    
+    // Define colors for sectors
+    const sectorColors = [
+      "#3B82F6", // Blue
+      "#10B981", // Green
+      "#F59E0B", // Yellow
+      "#EF4444", // Red
+      "#8B5CF6", // Purple
+      "#06B6D4", // Cyan
+      "#F97316", // Orange
+      "#EC4899", // Pink
+    ];
+    
     track.sectors.forEach((sector, idx) => {
       const isStartFinish = sector.name.toLowerCase().includes('start/finish') || sector.name.toLowerCase().includes('start finish');
+      const color = isStartFinish ? "#FF0000" : sectorColors[idx % sectorColors.length];
       
-      if (isStartFinish) {
-        // Create a single line for start/finish
-        // @ts-ignore
-        const startFinishLine = new window.google.maps.Polyline({
-          path: [
-            { lat: sector.startPoint.lat, lng: sector.startPoint.lng },
+      // Create a line for every sector
+      // @ts-ignore
+      const sectorLine = new window.google.maps.Polyline({
+        path: [
+          { lat: sector.startPoint.lat, lng: sector.startPoint.lng },
+          { lat: sector.endPoint.lat, lng: sector.endPoint.lng }
+        ],
+        geodesic: true,
+        strokeColor: color,
+        strokeOpacity: 1.0,
+        strokeWeight: isStartFinish ? 4 : 3,
+        map: showSectors ? mapInstanceRef.current! : null,
+      });
+      
+      // Add start marker
+      // @ts-ignore
+      const startMarker = new window.google.maps.Marker({
+        position: { lat: sector.startPoint.lat, lng: sector.startPoint.lng },
+        map: showSectors ? mapInstanceRef.current! : null,
+        label: isStartFinish ? "S" : `S${idx + 1}S`,
+        title: isStartFinish ? "Start/Finish Line Start" : `Sector ${idx + 1} Start`,
+        draggable: dragMode === "sectors",
+        icon: {
+          // @ts-ignore
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: isStartFinish ? 4 : 6,
+          fillColor: color,
+          fillOpacity: 0.8,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+      });
+      
+      // Add end marker
+      // @ts-ignore
+      const endMarker = new window.google.maps.Marker({
+        position: { lat: sector.endPoint.lat, lng: sector.endPoint.lng },
+        map: showSectors ? mapInstanceRef.current! : null,
+        label: isStartFinish ? "F" : `S${idx + 1}E`,
+        title: isStartFinish ? "Start/Finish Line Finish" : `Sector ${idx + 1} End`,
+        draggable: dragMode === "sectors",
+        icon: {
+          // @ts-ignore
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: isStartFinish ? 4 : 6,
+          fillColor: color,
+          fillOpacity: 0.8,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+      });
+      
+      // Drag listeners
+      startMarker.addListener("dragend", (e: any) => {
+        if (e.latLng) {
+          updateSectorPosition(sector.id, "start", e.latLng.lat(), e.latLng.lng());
+          // Update the line path
+          sectorLine.setPath([
+            { lat: e.latLng.lat(), lng: e.latLng.lng() },
             { lat: sector.endPoint.lat, lng: sector.endPoint.lng }
-          ],
-          geodesic: true,
-          strokeColor: "#FF0000", // Red for start/finish
-          strokeOpacity: 1.0,
-          strokeWeight: 4,
-          map: showSectors ? mapInstanceRef.current! : null,
-        });
-        
-        // Add start marker (smaller, at start point)
-        // @ts-ignore
-        const startMarker = new window.google.maps.Marker({
-          position: { lat: sector.startPoint.lat, lng: sector.startPoint.lng },
-          map: showSectors ? mapInstanceRef.current! : null,
-          label: "S",
-          title: "Start/Finish Line Start",
-          draggable: dragMode === "sectors",
-          icon: {
-            // @ts-ignore
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 4,
-            fillColor: "#FF0000",
-            fillOpacity: 0.8,
-            strokeColor: "#ffffff",
-            strokeWeight: 2,
-          },
-        });
-        
-        // Add finish marker (smaller, at end point)
-        // @ts-ignore
-        const finishMarker = new window.google.maps.Marker({
-          position: { lat: sector.endPoint.lat, lng: sector.endPoint.lng },
-          map: showSectors ? mapInstanceRef.current! : null,
-          label: "F",
-          title: "Start/Finish Line Finish",
-          draggable: dragMode === "sectors",
-          icon: {
-            // @ts-ignore
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 4,
-            fillColor: "#FF0000",
-            fillOpacity: 0.8,
-            strokeColor: "#ffffff",
-            strokeWeight: 2,
-          },
-        });
-        
-        // Drag listeners for start/finish
-        startMarker.addListener("dragend", (e: any) => {
-          if (e.latLng) {
-            updateSectorPosition(sector.id, "start", e.latLng.lat(), e.latLng.lng());
-            // Update the line path
-            startFinishLine.setPath([
-              { lat: e.latLng.lat(), lng: e.latLng.lng() },
-              { lat: sector.endPoint.lat, lng: sector.endPoint.lng }
-            ]);
-          }
-        });
-        
-        finishMarker.addListener("dragend", (e: any) => {
-          if (e.latLng) {
-            updateSectorPosition(sector.id, "end", e.latLng.lat(), e.latLng.lng());
-            // Update the line path
-            startFinishLine.setPath([
-              { lat: sector.startPoint.lat, lng: sector.startPoint.lng },
-              { lat: e.latLng.lat(), lng: e.latLng.lng() }
-            ]);
-          }
-        });
-        
-        newSectorMarkers.push(startFinishLine, startMarker, finishMarker);
-      } else {
-        // Regular sector markers (existing code)
-        // Start marker
-        // @ts-ignore
-        const startMarker = new window.google.maps.Marker({
-          position: { lat: sector.startPoint.lat, lng: sector.startPoint.lng },
-          map: showSectors ? mapInstanceRef.current! : null,
-          label: `S${idx + 1}S`,
-          title: `Sector ${idx + 1} Start`,
-          draggable: dragMode === "sectors",
-          icon: {
-            // @ts-ignore
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 6,
-            fillColor: "#f59e0b",
-            fillOpacity: 0.8,
-            strokeColor: "#ffffff",
-            strokeWeight: 2,
-          },
-        });
-        // End marker
-        // @ts-ignore
-        const endMarker = new window.google.maps.Marker({
-          position: { lat: sector.endPoint.lat, lng: sector.endPoint.lng },
-          map: showSectors ? mapInstanceRef.current! : null,
-          label: `S${idx + 1}E`,
-          title: `Sector ${idx + 1} End`,
-          draggable: dragMode === "sectors",
-          icon: {
-            // @ts-ignore
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 6,
-            fillColor: "#f59e0b",
-            fillOpacity: 0.8,
-            strokeColor: "#ffffff",
-            strokeWeight: 2,
-          },
-        });
-        // Drag listeners
-        startMarker.addListener("dragend", (e: any) => {
-          if (e.latLng) updateSectorPosition(sector.id, "start", e.latLng.lat(), e.latLng.lng());
-        });
-        endMarker.addListener("dragend", (e: any) => {
-          if (e.latLng) updateSectorPosition(sector.id, "end", e.latLng.lat(), e.latLng.lng());
-        });
-        newSectorMarkers.push(startMarker, endMarker);
-      }
+          ]);
+        }
+      });
+      
+      endMarker.addListener("dragend", (e: any) => {
+        if (e.latLng) {
+          updateSectorPosition(sector.id, "end", e.latLng.lat(), e.latLng.lng());
+          // Update the line path
+          sectorLine.setPath([
+            { lat: sector.startPoint.lat, lng: sector.startPoint.lng },
+            { lat: e.latLng.lat(), lng: e.latLng.lng() }
+          ]);
+        }
+      });
+      
+      newSectorMarkers.push(sectorLine, startMarker, endMarker);
     });
     sectorMarkersRef.current = newSectorMarkers;
   }, [track.sectors, dragMode, showSectors]);
@@ -466,9 +434,9 @@ const TrackCreator: React.FC = () => {
       })
     }));
 
-    // Update the start/finish line if this is a start/finish sector
+    // Update the sector line
     const sector = track.sectors.find(s => s.id === sectorId);
-    if (sector && (sector.name.toLowerCase().includes('start/finish') || sector.name.toLowerCase().includes('start finish'))) {
+    if (sector) {
       // Find the polyline in the markers array and update it
       const polylineIndex = sectorMarkersRef.current.findIndex(marker => 
         // @ts-ignore
@@ -514,11 +482,51 @@ const TrackCreator: React.FC = () => {
 
   // Save track (dummy, just notifies)
   const handleSaveTrack = () => {
-    if (!track.name || !track.city || !track.country) {
-      notify({ type: "error", title: "Missing Information", message: "Please fill in track name, city, and country" });
+    if (!trackName.trim()) {
+      notify({ type: "error", title: "Missing Track Name", message: "Please enter a name for your track" });
       return;
     }
-    notify({ type: "success", title: "Track Saved", message: `${track.name} has been saved successfully` });
+    if (track.sectors.length === 0) {
+      notify({ type: "error", title: "No Sectors", message: "Please add at least one sector to your track" });
+      return;
+    }
+    
+    const trackToSave = {
+      ...track,
+      id: Date.now().toString(),
+      name: trackName.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    
+    // In a real app, you would save to a database here
+    console.log("Saving track:", trackToSave);
+    
+    // For now, save to localStorage
+    try {
+      const savedTracks = JSON.parse(localStorage.getItem('racesense_tracks') || '[]');
+      savedTracks.push(trackToSave);
+      localStorage.setItem('racesense_tracks', JSON.stringify(savedTracks));
+      
+      notify({ 
+        type: "success", 
+        title: "Track Saved Successfully", 
+        message: `"${trackName}" has been saved with ${track.sectors.length} sectors` 
+      });
+      
+      // Reset form
+      setTrackName("");
+      setTrack(prev => ({
+        ...prev,
+        id: "",
+        name: "",
+        city: "",
+        country: "",
+        sectors: [],
+        createdAt: new Date().toISOString(),
+      }));
+    } catch (error) {
+      notify({ type: "error", title: "Save Failed", message: "Failed to save track. Please try again." });
+    }
   };
 
   return (
@@ -638,6 +646,38 @@ const TrackCreator: React.FC = () => {
           </div>
           {/* Control Panel */}
           <div className="space-y-4 sm:space-y-6">
+            {/* Track Name Input */}
+            <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-3">
+                  <div className="p-2 bg-green-500/20 rounded-lg">
+                    <Save className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" />
+                  </div>
+                  <span className="text-sm sm:text-base">Track Information</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">Track Name *</label>
+                  <Input
+                    type="text"
+                    placeholder="Enter track name..."
+                    value={trackName}
+                    onChange={(e) => setTrackName(e.target.value)}
+                    className="bg-gray-700/50 border-gray-600/50 text-white placeholder-gray-400 focus:border-green-500/50"
+                  />
+                </div>
+                <Button
+                  onClick={handleSaveTrack}
+                  className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg shadow-green-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                  disabled={!trackName.trim() || track.sectors.length === 0}
+                >
+                  <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  Save Track
+                </Button>
+              </CardContent>
+            </Card>
+
             {/* Quick Action Buttons */}
             <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
               <CardHeader>
@@ -655,7 +695,8 @@ const TrackCreator: React.FC = () => {
                   disabled={!mapReady}
                 >
                   <Flag className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                  Add Start/Finish
+                  <span className="hidden sm:inline">Add Start/Finish</span>
+                  <span className="sm:hidden">Start/Finish</span>
                 </Button>
                 <Button
                   onClick={addSectorAtMapCenter}
@@ -663,7 +704,8 @@ const TrackCreator: React.FC = () => {
                   disabled={!mapReady}
                 >
                   <Timer className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                  Add Sector
+                  <span className="hidden sm:inline">Add Sector</span>
+                  <span className="sm:hidden">Add Sector</span>
                 </Button>
                 <Button
                   onClick={addSectorAtCurrentLocation}
@@ -671,7 +713,8 @@ const TrackCreator: React.FC = () => {
                   disabled={!mapReady || !currentLocation}
                 >
                   <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                  Add Sector at Location
+                  <span className="hidden sm:inline">Add Sector at Location</span>
+                  <span className="sm:hidden">At Location</span>
                 </Button>
                 <div className="text-xs text-gray-400 text-center pt-2">
                   Use "Location" button to get your current position first
@@ -768,14 +811,6 @@ const TrackCreator: React.FC = () => {
             </Tabs>
             <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
               <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-                <Button
-                  onClick={handleSaveTrack}
-                  className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg shadow-green-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-                  disabled={!track.name || !track.city || !track.country}
-                >
-                  <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                  Save Track
-                </Button>
                 <Button
                   variant="outline"
                   className="w-full border-gray-600/50 text-gray-300 hover:bg-gray-700/50 transition-all duration-200 text-sm sm:text-base"
