@@ -533,13 +533,16 @@ class DataManagementService {
   // Generate basic telemetry data for demo sessions
   private generateBasicTelemetryData(durationSeconds: number): TelemetryPoint[] {
     const telemetryData: TelemetryPoint[] = [];
-    const interval = 100; // 100ms intervals
+    const interval = 500; // 500ms intervals (reduced frequency)
     const totalPoints = Math.floor(durationSeconds * 1000 / interval);
     const startTime = Date.now() - (durationSeconds * 1000);
     
-    console.log(`Generating ${totalPoints} basic telemetry points for ${durationSeconds}s session`);
+    // Limit to prevent localStorage quota issues
+    const maxPoints = Math.min(totalPoints, 1000);
     
-    for (let i = 0; i < totalPoints; i++) {
+    console.log(`Generating ${maxPoints} basic telemetry points for ${durationSeconds}s session`);
+    
+    for (let i = 0; i < maxPoints; i++) {
       const timestamp = startTime + (i * interval);
       telemetryData.push({
         timestamp,
@@ -551,6 +554,7 @@ class DataManagementService {
         rpm: 3000 + (Math.random() * 2000),
         throttle: 50 + (Math.random() * 50),
         brake: Math.random() * 20,
+        steering: (Math.random() - 0.5) * 100,
         gear: 3 + Math.floor(Math.random() * 3),
         engineTemp: 85 + Math.random() * 15,
         gForce: {
@@ -564,6 +568,8 @@ class DataManagementService {
           rearLeft: 75 + Math.random() * 20,
           rearRight: 75 + Math.random() * 20,
         },
+        lapNumber: Math.floor(i / 200) + 1,
+        sector: Math.floor((i % 200) / 67) + 1,
       });
     }
     
