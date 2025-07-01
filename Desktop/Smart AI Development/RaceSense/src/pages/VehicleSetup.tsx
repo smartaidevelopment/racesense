@@ -64,7 +64,7 @@ interface VehicleSetupState {
   setup: VehicleSetup;
 }
 
-class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD: LiveOBDData | null, obdConnected: boolean, obdError: string | null, connecting: boolean }> {
+class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD: LiveOBDData | null, obdConnected: boolean, obdError: string | null, connecting: boolean, saveConfirmation?: boolean }> {
   private savedProfiles = [
     "Default Setup",
     "Silverstone Qualifying",
@@ -127,6 +127,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
       obdConnected: obdIntegrationService.isDeviceConnected(),
       obdError: null,
       connecting: false,
+      saveConfirmation: false,
     };
   }
 
@@ -196,7 +197,16 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
   };
 
   private saveSetup = () => {
-    console.log("Saving setup:", this.state.setup);
+    const { setup, currentProfile } = this.state;
+    // Save the current setup as a new profile if not already present
+    if (!this.savedProfiles.includes(setup.name)) {
+      this.savedProfiles.push(setup.name);
+    }
+    this.setState({
+      currentProfile: setup.name,
+      saveConfirmation: true,
+    });
+    setTimeout(() => this.setState({ saveConfirmation: false }), 2000);
   };
 
   private resetSetup = () => {
@@ -259,36 +269,25 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
   }
 
   render() {
-    const { currentProfile, activeTab, setup, liveOBD, obdConnected, obdError, connecting } = this.state;
+    const { currentProfile, activeTab, setup, liveOBD, obdConnected, obdError, connecting, saveConfirmation } = this.state;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-racing-dark text-white">
         <div className="container mx-auto px-4 py-10 max-w-4xl">
           {/* Header */}
           <div className="flex items-center justify-between mb-10">
-            <div className="flex items-center gap-4">
-              <RacingButton
-                variant="outline"
-                size="sm"
-                className="border-border/50 hover:bg-card/50"
-                onClick={() => window.history.back()}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </RacingButton>
-              <div className="flex items-center gap-3">
-                <Car className="h-10 w-10 text-racing-red drop-shadow-lg" />
-                <div>
-                  <h1 className="text-4xl font-extrabold text-racing-red tracking-tight drop-shadow-lg">
-                    Vehicle Setup
-                  </h1>
-                  <p className="text-muted-foreground text-base mt-1">
-                    Fine-tune your racing machine for peak performance
-                  </p>
-                  {obdConnected && (
-                    <span className="ml-2 px-2 py-1 bg-green-700 text-xs rounded font-bold animate-pulse">Live</span>
-                  )}
-                </div>
+            <div className="flex items-center gap-3">
+              <Car className="h-10 w-10 text-racing-red drop-shadow-lg" />
+              <div>
+                <h1 className="text-4xl font-extrabold text-racing-red tracking-tight drop-shadow-lg">
+                  Vehicle Setup
+                </h1>
+                <p className="text-muted-foreground text-base mt-1">
+                  Fine-tune your racing machine for peak performance
+                </p>
+                {obdConnected && (
+                  <span className="ml-2 px-2 py-1 bg-green-700 text-xs rounded font-bold animate-pulse">Live</span>
+                )}
               </div>
             </div>
             <div className="flex gap-3 items-center">
@@ -339,6 +338,9 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
                   </select>
                 </div>
                 <div className="flex gap-2">
+                  <RacingButton size="sm" variant="default" title="Save Profile" onClick={this.saveSetup}>
+                    <Save className="h-4 w-4" /> Save
+                  </RacingButton>
                   <RacingButton size="sm" variant="outline" title="Copy Profile">
                     <Copy className="h-4 w-4" />
                   </RacingButton>
@@ -348,6 +350,9 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
                 </div>
               </div>
             </div>
+            {saveConfirmation && (
+              <div className="mt-2 text-green-400 text-sm font-semibold">Profile saved!</div>
+            )}
           </Card>
 
           {/* Setup Tabs */}
