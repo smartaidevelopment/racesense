@@ -324,6 +324,8 @@ class DataManagementService {
   private loadSessions(): void {
     try {
       const stored = localStorage.getItem("racesense-sessions");
+      const hasSampleData = localStorage.getItem("racesense-has-sample-data");
+      
       if (stored) {
         console.log("Loading sessions from localStorage...");
         const sessionsData = JSON.parse(stored);
@@ -346,14 +348,22 @@ class DataManagementService {
         });
         
         console.log(`Successfully loaded ${loadedCount} sessions from localStorage`);
+      } else if (hasSampleData) {
+        console.log("Sample data flag found but no sessions in localStorage - this indicates an issue");
+        console.log("Not loading demo data to avoid conflicts");
       } else {
         console.log("No sessions found in localStorage, loading demo data...");
         this.loadDemoData();
       }
     } catch (error) {
       console.error("Failed to load sessions:", error);
-      console.log("Falling back to demo data...");
-      this.loadDemoData();
+      const hasSampleData = localStorage.getItem("racesense-has-sample-data");
+      if (!hasSampleData) {
+        console.log("Falling back to demo data...");
+        this.loadDemoData();
+      } else {
+        console.log("Sample data flag found, not loading demo data to avoid conflicts");
+      }
     }
   }
 

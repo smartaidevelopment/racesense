@@ -12,6 +12,9 @@ class DataGeneratorService {
     // Clear existing demo sessions first
     this.clearSampleData();
     
+    // Force reload the DataManagementService to ensure clean state
+    this.forceReloadDataManagement();
+    
     const tracks = [
       "Silverstone GP",
       "Spa-Francorchamps",
@@ -222,50 +225,52 @@ class DataGeneratorService {
   // Clear all sample data
   clearSampleData(): void {
     console.log("Clearing existing sample data...");
-    const sessions = dataManagementService.getAllSessions();
-    let clearedCount = 0;
     
-    sessions.forEach(session => {
-      // Clear any session that looks like it might be sample/demo data
-      if (session.name.includes("Sample") || 
-          session.name.includes("Session") ||
-          session.name.includes("Practice") ||
-          session.name.includes("Qualifying") ||
-          session.name.includes("Testing") ||
-          session.name.includes("Morning") ||
-          session.name.includes("Simulation") ||
-          session.name.includes("Wet Weather") ||
-          session.name.includes("Setup") ||
-          session.name.includes("Test Session")) {
-        console.log(`Clearing session: ${session.name} (ID: ${session.id})`);
-        dataManagementService.deleteSession(session.id);
-        clearedCount++;
+    // Clear all sessions from localStorage completely
+    localStorage.removeItem("racesense-sessions");
+    console.log("Cleared racesense-sessions from localStorage");
+    
+    // Also clear any other potential session data
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.includes('session') || key.includes('race') || key.includes('track'))) {
+        keysToRemove.push(key);
       }
+    }
+    
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+      console.log(`Cleared localStorage key: ${key}`);
     });
     
-    console.log(`Cleared ${clearedCount} existing sessions`);
+    console.log("Complete localStorage cleanup finished");
     
-    // Verify all sessions are cleared
-    const remainingSessions = dataManagementService.getAllSessions();
-    console.log(`Remaining sessions after clearing: ${remainingSessions.length}`);
-    remainingSessions.forEach(session => {
-      console.log(`Remaining: ${session.name} (ID: ${session.id})`);
-    });
+    // Set a flag to indicate we have generated sample data
+    localStorage.setItem("racesense-has-sample-data", "true");
+    console.log("Set sample data flag in localStorage");
   }
 
   // Check if sample data exists
   hasSampleData(): boolean {
+    const hasSampleDataFlag = localStorage.getItem("racesense-has-sample-data");
     const sessions = dataManagementService.getAllSessions();
     const hasData = sessions.some(session => 
       session.name.includes("Sample") || session.name.includes("Session")
     );
     
-    console.log(`Sample data check: ${hasData ? 'Found' : 'Not found'}`);
+    console.log(`Sample data check: Flag=${hasSampleDataFlag}, Sessions=${hasData}`);
     sessions.forEach(session => {
       console.log(`Session: ${session.name}, Telemetry points: ${session.telemetryData?.length || 0}`);
     });
     
-    return hasData;
+    return hasSampleDataFlag === "true" || hasData;
+  }
+
+  // Clear sample data flag
+  clearSampleDataFlag(): void {
+    localStorage.removeItem("racesense-has-sample-data");
+    console.log("Cleared sample data flag from localStorage");
   }
 
   // Test method to create a single session with telemetry data
@@ -333,6 +338,18 @@ class DataGeneratorService {
     }
     
     console.log("=== Single session test complete ===");
+  }
+
+  // Force reload DataManagementService
+  private forceReloadDataManagement(): void {
+    console.log("Forcing DataManagementService reload...");
+    // Clear the sessions Map to ensure clean state
+    // Note: This is a bit of a hack, but it ensures we start fresh
+    const sessions = dataManagementService.getAllSessions();
+    sessions.forEach(session => {
+      dataManagementService.deleteSession(session.id);
+    });
+    console.log("Cleared all existing sessions from DataManagementService");
   }
 }
 
