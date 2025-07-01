@@ -325,31 +325,53 @@ class DataManagementService {
     try {
       const stored = localStorage.getItem("racesense-sessions");
       if (stored) {
+        console.log("Loading sessions from localStorage...");
         const sessionsData = JSON.parse(stored);
+        let loadedCount = 0;
+        
         Object.entries(sessionsData).forEach(([id, data]: [string, any]) => {
-          // Convert date strings back to Date objects
-          data.date = new Date(data.date);
-          if (data.syncStatus?.lastSync) {
-            data.syncStatus.lastSync = new Date(data.syncStatus.lastSync);
+          try {
+            // Convert date strings back to Date objects
+            data.date = new Date(data.date);
+            if (data.syncStatus?.lastSync) {
+              data.syncStatus.lastSync = new Date(data.syncStatus.lastSync);
+            }
+            this.sessions.set(id, data);
+            loadedCount++;
+            
+            console.log(`Loaded session: ${data.name} with ${data.telemetryData?.length || 0} telemetry points`);
+          } catch (sessionError) {
+            console.error(`Failed to load session ${id}:`, sessionError);
           }
-          this.sessions.set(id, data);
         });
+        
+        console.log(`Successfully loaded ${loadedCount} sessions from localStorage`);
       } else {
-        // Load demo data if no sessions exist
+        console.log("No sessions found in localStorage, loading demo data...");
         this.loadDemoData();
       }
     } catch (error) {
       console.error("Failed to load sessions:", error);
+      console.log("Falling back to demo data...");
       this.loadDemoData();
     }
   }
 
   private saveSessions(): void {
     try {
-      const sessionsData = Object.fromEntries(this.sessions);
-      localStorage.setItem("racesense-sessions", JSON.stringify(sessionsData));
+      // Convert Map to object properly
+      const sessionsData: Record<string, SessionData> = {};
+      this.sessions.forEach((session, id) => {
+        sessionsData[id] = session;
+      });
+      
+      const serializedData = JSON.stringify(sessionsData);
+      localStorage.setItem("racesense-sessions", serializedData);
+      
+      console.log(`Saved ${this.sessions.size} sessions to localStorage`);
     } catch (error) {
       console.error("Failed to save sessions:", error);
+      console.error("Sessions data:", this.sessions);
     }
   }
 

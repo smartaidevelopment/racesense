@@ -7,6 +7,8 @@ import { dataManagementService } from "./DataManagementService";
 class DataGeneratorService {
   // Generate sample session data
   generateSampleSessions(): void {
+    console.log("=== Starting sample session generation ===");
+    
     // Clear existing demo sessions first
     this.clearSampleData();
     
@@ -29,10 +31,10 @@ class DataGeneratorService {
       const date = new Date();
       date.setDate(date.getDate() - i * 2); // Sessions every 2 days
 
-      console.log(`Generating session ${i + 1}: ${track} ${sessionType}`);
+      console.log(`\n--- Generating session ${i + 1}: ${track} ${sessionType} ---`);
 
       const telemetryData = this.generateTelemetryData(track, sessionType);
-      console.log(`Generated ${telemetryData.length} telemetry points`);
+      console.log(`Generated ${telemetryData.length} telemetry points for ${track}`);
 
       const session: Omit<SessionData, "id"> = {
         name: `${track} ${sessionType.charAt(0).toUpperCase() + sessionType.slice(1)} Session ${i + 1}`,
@@ -51,11 +53,29 @@ class DataGeneratorService {
         },
       };
 
+      console.log(`Creating session: ${session.name}`);
+      console.log(`Session telemetry data length: ${session.telemetryData.length}`);
+      
       const sessionId = dataManagementService.addSession(session);
       console.log(`Created session with ID: ${sessionId}`);
+      
+      // Verify the session was created correctly
+      const createdSession = dataManagementService.getSession(sessionId);
+      if (createdSession) {
+        console.log(`✓ Verified session: ${createdSession.name} with ${createdSession.telemetryData?.length || 0} telemetry points`);
+      } else {
+        console.error(`✗ Failed to retrieve created session: ${sessionId}`);
+      }
     }
 
-    console.log("Sample session generation complete");
+    console.log("\n=== Sample session generation complete ===");
+    
+    // Final verification
+    const allSessions = dataManagementService.getAllSessions();
+    console.log(`Total sessions in storage: ${allSessions.length}`);
+    allSessions.forEach(session => {
+      console.log(`Session: ${session.name} - Telemetry points: ${session.telemetryData?.length || 0}`);
+    });
   }
 
   // Generate realistic telemetry data
@@ -206,17 +226,31 @@ class DataGeneratorService {
     let clearedCount = 0;
     
     sessions.forEach(session => {
+      // Clear any session that looks like it might be sample/demo data
       if (session.name.includes("Sample") || 
           session.name.includes("Session") ||
           session.name.includes("Practice") ||
           session.name.includes("Qualifying") ||
-          session.name.includes("Testing")) {
+          session.name.includes("Testing") ||
+          session.name.includes("Morning") ||
+          session.name.includes("Simulation") ||
+          session.name.includes("Wet Weather") ||
+          session.name.includes("Setup") ||
+          session.name.includes("Test Session")) {
+        console.log(`Clearing session: ${session.name} (ID: ${session.id})`);
         dataManagementService.deleteSession(session.id);
         clearedCount++;
       }
     });
     
     console.log(`Cleared ${clearedCount} existing sessions`);
+    
+    // Verify all sessions are cleared
+    const remainingSessions = dataManagementService.getAllSessions();
+    console.log(`Remaining sessions after clearing: ${remainingSessions.length}`);
+    remainingSessions.forEach(session => {
+      console.log(`Remaining: ${session.name} (ID: ${session.id})`);
+    });
   }
 
   // Check if sample data exists
@@ -236,10 +270,24 @@ class DataGeneratorService {
 
   // Test method to create a single session with telemetry data
   testCreateSingleSession(): void {
-    console.log("Testing single session creation...");
+    console.log("=== Testing single session creation ===");
     
     const telemetryData = this.generateTelemetryData("Silverstone GP", "practice");
     console.log(`Generated ${telemetryData.length} telemetry points for test`);
+    
+    // Verify telemetry data structure
+    if (telemetryData.length > 0) {
+      const firstPoint = telemetryData[0];
+      console.log("First telemetry point structure:", {
+        timestamp: firstPoint.timestamp,
+        position: firstPoint.position,
+        speed: firstPoint.speed,
+        rpm: firstPoint.rpm,
+        throttle: firstPoint.throttle,
+        brake: firstPoint.brake,
+        gear: firstPoint.gear
+      });
+    }
     
     const session: Omit<SessionData, "id"> = {
       name: "Test Session with Telemetry",
@@ -258,16 +306,33 @@ class DataGeneratorService {
       },
     };
 
+    console.log(`Creating test session: ${session.name}`);
+    console.log(`Session telemetry data length: ${session.telemetryData.length}`);
+    
     const sessionId = dataManagementService.addSession(session);
     console.log(`Test session created with ID: ${sessionId}`);
     
     // Verify the session was created correctly
     const createdSession = dataManagementService.getSession(sessionId);
     if (createdSession) {
-      console.log(`Verified session: ${createdSession.name} with ${createdSession.telemetryData?.length || 0} telemetry points`);
+      console.log(`✓ Verified test session: ${createdSession.name} with ${createdSession.telemetryData?.length || 0} telemetry points`);
+      
+      // Verify telemetry data is accessible
+      if (createdSession.telemetryData && createdSession.telemetryData.length > 0) {
+        console.log("✓ Telemetry data is accessible in created session");
+        console.log("First point from created session:", {
+          timestamp: createdSession.telemetryData[0].timestamp,
+          position: createdSession.telemetryData[0].position,
+          speed: createdSession.telemetryData[0].speed
+        });
+      } else {
+        console.error("✗ Telemetry data is missing or empty in created session");
+      }
     } else {
-      console.error("Failed to retrieve created session");
+      console.error("✗ Failed to retrieve created test session");
     }
+    
+    console.log("=== Single session test complete ===");
   }
 }
 
