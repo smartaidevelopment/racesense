@@ -206,30 +206,7 @@ const TrackCreator: React.FC = () => {
     }
   };
 
-  // Add sector at current location
-  const addSectorAtCurrentLocation = () => {
-    if (!currentLocation) {
-      notify({ type: "warning", title: "No Location", message: "Please get your current location first" });
-      return;
-    }
-    
-    const currentSectorsCount = sectorsCountRef.current;
-    const newPoint: SectorPoint = {
-      id: Date.now().toString(),
-      lat: currentLocation.lat,
-      lng: currentLocation.lng,
-      name: `Sector Point ${currentSectorsCount * 2 + 1}`,
-    };
-    const newSector = {
-      id: currentSectorsCount + 1,
-      name: `Sector ${currentSectorsCount + 1}`,
-      startPoint: newPoint,
-      endPoint: { ...newPoint, id: (Date.now() + 1).toString() },
-      length: 0,
-    };
-    setTrack(prev => ({ ...prev, sectors: [...prev.sectors, newSector] }));
-    notify({ type: "success", title: "Sector Added", message: `Added sector at your location: ${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}` });
-  };
+
 
   // Get current location and center map
   const getCurrentLocation = () => {
@@ -669,11 +646,12 @@ const TrackCreator: React.FC = () => {
                 </div>
                 <Button
                   onClick={handleSaveTrack}
-                  className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg shadow-green-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                  className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg shadow-green-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                   disabled={!trackName.trim() || track.sectors.length === 0}
                 >
-                  <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                  Save Track
+                  <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  <span className="hidden sm:inline">Save Track</span>
+                  <span className="sm:hidden">Save</span>
                 </Button>
               </CardContent>
             </Card>
@@ -691,30 +669,21 @@ const TrackCreator: React.FC = () => {
               <CardContent className="space-y-3">
                 <Button
                   onClick={addStartFinishAtCenter}
-                  className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg shadow-green-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                  className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg shadow-green-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                   disabled={!mapReady}
                 >
-                  <Flag className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <Flag className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                   <span className="hidden sm:inline">Add Start/Finish</span>
                   <span className="sm:hidden">Start/Finish</span>
                 </Button>
                 <Button
                   onClick={addSectorAtMapCenter}
-                  className="w-full bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-700 hover:to-yellow-600 text-white shadow-lg shadow-yellow-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                  className="w-full bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-700 hover:to-yellow-600 text-white shadow-lg shadow-yellow-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                   disabled={!mapReady}
                 >
-                  <Timer className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <Timer className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                   <span className="hidden sm:inline">Add Sector</span>
                   <span className="sm:hidden">Add Sector</span>
-                </Button>
-                <Button
-                  onClick={addSectorAtCurrentLocation}
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-lg shadow-blue-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-                  disabled={!mapReady || !currentLocation}
-                >
-                  <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Add Sector at Location</span>
-                  <span className="sm:hidden">At Location</span>
                 </Button>
                 <div className="text-xs text-gray-400 text-center pt-2">
                   Use "Location" button to get your current position first
