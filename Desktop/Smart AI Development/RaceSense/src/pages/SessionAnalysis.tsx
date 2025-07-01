@@ -6,13 +6,15 @@ import { DataCard } from "@/components/DataCard";
 import { PerformanceMetric } from "@/components/LoadingStates";
 import { notify } from "@/components/RacingNotifications";
 import {
-  sessionAnalysisService,
-  TrackAnalysis,
-  LapComparison,
-  PerformanceInsights,
-  SessionMetrics,
-} from "@/services/SessionAnalysisService";
-import { lapTimingService, LapData } from "@/services/LapTimingService";
+  realSessionAnalysisService,
+  RealTrackAnalysis,
+  RealLapComparison,
+  RealPerformanceInsights,
+  RealSessionMetrics,
+  RealLapData,
+} from "@/services/RealSessionAnalysisService";
+import { dataManagementService, SessionData } from "@/services/DataManagementService";
+import { dataGeneratorService } from "@/services/DataGeneratorService";
 import {
   ArrowLeft,
   TrendingUp,
@@ -38,21 +40,27 @@ import {
   Calendar,
   Timer,
   Route,
+  Database,
+  FileText,
+  Settings,
 } from "lucide-react";
 
 interface SessionAnalysisState {
   selectedSession: string | null;
-  availableSessions: string[];
-  trackAnalysis: TrackAnalysis | null;
-  selectedLaps: LapData[];
-  lapComparison: LapComparison | null;
-  performanceInsights: PerformanceInsights | null;
-  sessionMetrics: SessionMetrics | null;
+  availableSessions: SessionData[];
+  trackAnalysis: RealTrackAnalysis | null;
+  selectedLaps: RealLapData[];
+  lapComparison: RealLapComparison | null;
+  performanceInsights: RealPerformanceInsights | null;
+  sessionMetrics: RealSessionMetrics | null;
   isAnalyzing: boolean;
   showLapComparison: boolean;
-  selectedLap1: LapData | null;
-  selectedLap2: LapData | null;
+  selectedLap1: RealLapData | null;
+  selectedLap2: RealLapData | null;
   analysisType: "overview" | "detailed" | "comparison" | "trends";
+  selectedTrack: string | null;
+  availableTracks: string[];
+  error: string | null;
 }
 
 class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
@@ -71,71 +79,197 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
       selectedLap1: null,
       selectedLap2: null,
       analysisType: "overview",
+      selectedTrack: null,
+      availableTracks: [],
+      error: null,
     };
   }
 
   componentDidMount() {
-    this.loadAvailableSessions();
+    this.loadRealData();
   }
 
-  loadAvailableSessions = () => {
-    // In a real app, this would load from storage/database
-    const mockSessions = [
-      "session-silverstone-2024-01-15",
-      "session-spa-2024-01-12",
-      "session-nurburgring-2024-01-10",
-    ];
+  loadRealData = async () => {
+    try {
+      this.setState({ isAnalyzing: true, error: null });
 
-    this.setState({
-      availableSessions: mockSessions,
-      selectedSession: mockSessions[0],
-    });
+      // Load real sessions from storage
+      const sessions = dataManagementService.getAllSessions();
+      
+      // Extract unique tracks
+      const tracks = [...new Set(sessions.map(s => s.track))];
+      
+      this.setState({
+        availableSessions: sessions,
+        availableTracks: tracks,
+        selectedTrack: tracks[0] || null,
+        isAnalyzing: false,
+      });
 
-    if (mockSessions.length > 0) {
-      this.analyzeSession(mockSessions[0]);
+      if (tracks.length > 0) {
+        await this.analyzeTrack(tracks[0]);
+      } else {
+        this.setState({
+          error: "No session data found. Please record some sessions first.",
+        });
+      }
+    } catch (error) {
+      console.error("Error loading real data:", error);
+      this.setState({
+        isAnalyzing: false,
+        error: "Failed to load session data. Please check your data storage.",
+      });
+    }
+  };
+
+  analyzeTrack = async (trackId: string) => {
+    if (!trackId) return;
+
+    this.setState({ isAnalyzing: true, error: null });
+
+    try {
+      // Analyze track performance using real data
+      const trackAnalysis = await realSessionAnalysisService.analyzeRealTrackPerformance(trackId);
+      
+      // Get sessions for this track
+      const trackSessions = this.state.availableSessions.filter(s => s.track === trackId);
+      
+      // Convert sessions to lap data
+      const allLaps: RealLapData[] = [];
+      for (const session of trackSessions) {
+        const sessionLaps = await realSessionAnalysisService.convertSessionToLapData(session.id);
+        allLaps.push(...sessionLaps);
+      }
+
+      // Generate insights
+      const performanceInsights = await realSessionAnalysisService.generateRealInsights(
+        trackId,
+        trackSessions.map(s => s.id)
+      );
+
+      this.setState({
+        selectedTrack: trackId,
+        trackAnalysis,
+        selectedLaps: allLaps,
+        performanceInsights,
+        isAnalyzing: false,
+      });
+
+      notify.success(
+        "Real Analysis Complete",
+        `Track analysis completed for ${trackId} with ${allLaps.length} laps`,
+        { duration: 3000 },
+      );
+    } catch (error) {
+      console.error("Error analyzing track:", error);
+      this.setState({
+        isAnalyzing: false,
+        error: `Failed to analyze track ${trackId}: ${error}`,
+      });
     }
   };
 
   analyzeSession = async (sessionId: string) => {
-    this.setState({ isAnalyzing: true });
+    this.setState({ isAnalyzing: true, error: null });
 
     try {
-      // Generate mock data for demonstration
-      const mockLaps = this.generateMockLaps();
-      const trackAnalysis = this.generateMockTrackAnalysis();
-      const performanceInsights = this.generateMockInsights();
-      const sessionMetrics = this.generateMockSessionMetrics();
+      // Calculate real session metrics
+      const sessionMetrics = await realSessionAnalysisService.calculateRealSessionMetrics(sessionId);
+      
+      // Convert session to lap data
+      const sessionLaps = await realSessionAnalysisService.convertSessionToLapData(sessionId);
 
       this.setState({
         selectedSession: sessionId,
-        selectedLaps: mockLaps,
-        trackAnalysis,
-        performanceInsights,
+        selectedLaps: sessionLaps,
         sessionMetrics,
         isAnalyzing: false,
       });
 
       notify.success(
-        "Analysis Complete",
-        "Session data has been analyzed successfully",
+        "Session Analysis Complete",
+        `Session ${sessionId} analyzed with ${sessionLaps.length} laps`,
         { duration: 3000 },
       );
     } catch (error) {
-      this.setState({ isAnalyzing: false });
-      notify.error("Analysis Failed", `Could not analyze session: ${error}`, {
+      console.error("Error analyzing session:", error);
+      this.setState({
+        isAnalyzing: false,
+        error: `Failed to analyze session ${sessionId}: ${error}`,
+      });
+    }
+  };
+
+  compareLaps = async (lap1: RealLapData, lap2: RealLapData) => {
+    try {
+      const comparison = await realSessionAnalysisService.compareRealLaps(lap1, lap2);
+      this.setState({
+        lapComparison: comparison,
+        selectedLap1: lap1,
+        selectedLap2: lap2,
+        showLapComparison: true,
+      });
+    } catch (error) {
+      console.error("Error comparing laps:", error);
+      notify.error("Comparison Failed", `Could not compare laps: ${error}`, {
         duration: 5000,
       });
     }
   };
 
-  compareLaps = (lap1: LapData, lap2: LapData) => {
-    const comparison = sessionAnalysisService.compareLaps(lap1, lap2);
-    this.setState({
-      lapComparison: comparison,
-      selectedLap1: lap1,
-      selectedLap2: lap2,
-      showLapComparison: true,
-    });
+  handleTrackChange = (trackId: string) => {
+    this.analyzeTrack(trackId);
+  };
+
+  handleSessionChange = (sessionId: string) => {
+    this.analyzeSession(sessionId);
+  };
+
+  exportAnalysisData = async () => {
+    if (!this.state.selectedTrack) {
+      notify.error("No Track Selected", "Please select a track to export analysis data");
+      return;
+    }
+
+    try {
+      const analysisData = await realSessionAnalysisService.exportAnalysisData(this.state.selectedTrack);
+      
+      // Create and download file
+      const blob = new Blob([analysisData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `analysis-${this.state.selectedTrack}-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      notify.success("Export Complete", "Analysis data exported successfully");
+    } catch (error) {
+      notify.error("Export Failed", `Failed to export analysis data: ${error}`);
+    }
+  };
+
+  importAnalysisData = async (file: File) => {
+    try {
+      const text = await file.text();
+      await realSessionAnalysisService.importAnalysisData(text);
+      notify.success("Import Complete", "Analysis data imported successfully");
+      this.loadRealData(); // Reload data
+    } catch (error) {
+      notify.error("Import Failed", `Failed to import analysis data: ${error}`);
+    }
+  };
+
+  generateSampleData = async () => {
+    try {
+      dataGeneratorService.generateSampleSessions();
+      notify.success("Sample Data Generated", "Sample session data has been created for testing");
+      this.loadRealData(); // Reload data
+    } catch (error) {
+      notify.error("Generation Failed", `Failed to generate sample data: ${error}`);
+    }
   };
 
   handleNavigation = (path: string) => {
@@ -145,186 +279,22 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
     }
   };
 
-  generateMockLaps = (): LapData[] => {
-    const laps: LapData[] = [];
-    const baseTime = 83000; // 1:23.000
-
-    for (let i = 0; i < 12; i++) {
-      const variation = (Math.random() - 0.5) * 2000; // ±2 seconds variation
-      laps.push({
-        lapNumber: i + 1,
-        startTime: Date.now() - (12 - i) * 90000,
-        endTime: Date.now() - (12 - i - 1) * 90000,
-        lapTime: baseTime + variation,
-        maxSpeed: 245 + (Math.random() - 0.5) * 20,
-        averageSpeed: 185 + (Math.random() - 0.5) * 15,
-        sectors: [
-          { time: (baseTime + variation) / 3, maxSpeed: 220 },
-          { time: (baseTime + variation) / 3, maxSpeed: 250 },
-          { time: (baseTime + variation) / 3, maxSpeed: 180 },
-        ],
-        gpsPoints: [], // Would contain actual GPS data
-        trackId: "silverstone-gp",
-        isValidLap: true,
-      });
-    }
-
-    return laps;
-  };
-
-  generateMockTrackAnalysis = (): TrackAnalysis => {
-    return {
-      trackId: "silverstone-gp",
-      totalSessions: 5,
-      totalLaps: 48,
-      bestLapTime: 81250, // 1:21.250
-      bestLapSession: "session-silverstone-2024-01-10",
-      averageLapTime: 83750, // 1:23.750
-      consistencyRating: 87.3,
-      sectors: [
-        {
-          sectorNumber: 1,
-          startDistance: 0,
-          endDistance: 1967,
-          bestTime: 27083,
-          averageTime: 27916,
-          bestSpeed: 225,
-          averageSpeed: 218,
-          throttleEfficiency: 89.2,
-          brakingPoints: [450, 1200],
-          accelerationZones: [0, 800],
-        },
-        {
-          sectorNumber: 2,
-          startDistance: 1967,
-          endDistance: 3934,
-          bestTime: 27500,
-          averageTime: 28200,
-          bestSpeed: 248,
-          averageSpeed: 242,
-          throttleEfficiency: 91.5,
-          brakingPoints: [2400, 3200],
-          accelerationZones: [2000, 2800],
-        },
-        {
-          sectorNumber: 3,
-          startDistance: 3934,
-          endDistance: 5891,
-          bestTime: 26667,
-          averageTime: 27634,
-          bestSpeed: 195,
-          averageSpeed: 188,
-          throttleEfficiency: 85.7,
-          brakingPoints: [4500, 5200],
-          accelerationZones: [4200, 5600],
-        },
-      ],
-      speedZones: [
-        {
-          start: 0,
-          end: 500,
-          type: "acceleration",
-          optimalSpeed: 180,
-          averageSpeed: 175,
-        },
-        {
-          start: 500,
-          end: 1500,
-          type: "straight",
-          optimalSpeed: 320,
-          averageSpeed: 315,
-        },
-        {
-          start: 1500,
-          end: 2000,
-          type: "braking",
-          optimalSpeed: 120,
-          averageSpeed: 125,
-        },
-        {
-          start: 2000,
-          end: 2500,
-          type: "cornering",
-          optimalSpeed: 85,
-          averageSpeed: 82,
-        },
-      ],
-    };
-  };
-
-  generateMockInsights = (): PerformanceInsights => {
-    return {
-      strengths: [
-        {
-          area: "High-Speed Corners",
-          description:
-            "Excellent speed maintenance through Copse and Maggotts-Becketts complex",
-          confidence: 0.92,
-        },
-        {
-          area: "Braking Consistency",
-          description:
-            "Very consistent braking points with minimal variation between laps",
-          confidence: 0.88,
-        },
-      ],
-      improvements: [
-        {
-          area: "Sector 1 Exit",
-          description:
-            "Earlier throttle application out of Turn 3 could gain 0.2-0.3 seconds",
-          potentialGain: "0.25s",
-          priority: "high",
-        },
-        {
-          area: "Final Sector",
-          description: "Carrying more speed through Club corner complex",
-          potentialGain: "0.15s",
-          priority: "medium",
-        },
-      ],
-      consistency: {
-        rating: 87.3,
-        description:
-          "Good consistency with room for improvement in sector timing",
-        variability: 1750, // milliseconds
-      },
-      efficiency: {
-        throttle: 89.4,
-        braking: 85.2,
-        cornering: 82.7,
-        overall: 85.8,
-      },
-    };
-  };
-
-  generateMockSessionMetrics = (): SessionMetrics => {
-    return {
-      totalDistance: 70692, // 12 laps × 5891m
-      totalTime: 1005000, // ~16.75 minutes
-      averageSpeed: 253.2,
-      maxSpeed: 327.5,
-      fuelConsumption: 8.4,
-      avgEngineLoad: 67.3,
-      maxRPM: 7850,
-      avgCoolantTemp: 92.8,
-      throttleTime: 420000, // 7 minutes
-      brakingTime: 95000, // 1.58 minutes
-      corneringTime: 490000, // 8.17 minutes
-    };
-  };
-
   formatTime = (milliseconds: number): string => {
-    const totalSeconds = milliseconds / 1000;
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toFixed(3).padStart(6, "0")}`;
+    const minutes = Math.floor(milliseconds / 60000);
+    const seconds = Math.floor((milliseconds % 60000) / 1000);
+    const ms = Math.floor((milliseconds % 1000) / 10);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}.${ms.toString().padStart(2, "0")}`;
   };
 
   formatDuration = (milliseconds: number): string => {
-    const minutes = Math.floor(milliseconds / 60000);
+    const hours = Math.floor(milliseconds / 3600000);
+    const minutes = Math.floor((milliseconds % 3600000) / 60000);
     const seconds = Math.floor((milliseconds % 60000) / 1000);
-    return `${minutes}m ${seconds}s`;
+    return `${hours}h ${minutes}m ${seconds}s`;
+  };
+
+  formatDistance = (meters: number): string => {
+    return `${(meters / 1000).toFixed(2)} km`;
   };
 
   render() {
@@ -341,506 +311,396 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
       selectedLap1,
       selectedLap2,
       analysisType,
+      selectedTrack,
+      availableTracks,
+      error,
     } = this.state;
 
-    return (
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <RacingButton
-              variant="outline"
-              size="icon"
-              onClick={() => this.handleNavigation("/")}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </RacingButton>
-            <div>
-              <h1 className="text-3xl font-bold mb-2">Session Analysis</h1>
-              <p className="text-muted-foreground">
-                Advanced telemetry analysis and performance insights
-              </p>
+    if (error) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-black text-white">
+          <div className="max-w-7xl mx-auto p-4 sm:p-6">
+            <div className="text-center py-12">
+              <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-red-400 mb-2">Analysis Error</h2>
+              <p className="text-gray-400 mb-6">{error}</p>
+              <RacingButton
+                onClick={this.loadRealData}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry Loading Data
+              </RacingButton>
             </div>
-          </div>
-          <div className="flex gap-2">
-            <RacingButton
-              variant="outline"
-              icon={Upload}
-              className="border-racing-blue/30 text-racing-blue"
-            >
-              Import Data
-            </RacingButton>
-            <RacingButton
-              variant="outline"
-              icon={Download}
-              className="border-racing-green/30 text-racing-green"
-              disabled={!selectedSession}
-            >
-              Export Report
-            </RacingButton>
           </div>
         </div>
+      );
+    }
 
-        {/* Session Selection */}
-        <Card className="p-6">
-          <h3 className="font-semibold mb-4 flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-racing-blue" />
-            Select Session
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {availableSessions.map((session) => (
-              <Card
-                key={session}
-                className={`p-4 cursor-pointer transition-colors ${
-                  selectedSession === session
-                    ? "border-racing-blue bg-racing-blue/10"
-                    : "border-border hover:border-racing-blue/50"
-                }`}
-                onClick={() => this.analyzeSession(session)}
-              >
-                <div className="space-y-2">
-                  <div className="font-medium">
-                    {session.includes("silverstone")
-                      ? "Silverstone GP"
-                      : session.includes("spa")
-                        ? "Spa-Francorchamps"
-                        : "Nürburgring GP"}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {session.split("-").slice(-3).join("-")}
-                  </div>
-                  <div className="flex gap-2">
-                    <Badge variant="secondary" className="text-xs">
-                      12 laps
-                    </Badge>
-                    <Badge variant="secondary" className="text-xs">
-                      16:45 session
-                    </Badge>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </Card>
-
-        {isAnalyzing && (
-          <Card className="p-8 text-center">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <RefreshCw className="h-6 w-6 animate-spin text-racing-blue" />
-              <span className="text-lg font-medium">
-                Analyzing Session Data...
-              </span>
-            </div>
-            <p className="text-muted-foreground">
-              Processing telemetry data and generating insights
-            </p>
-          </Card>
-        )}
-
-        {/* Analysis Type Selection */}
-        {!isAnalyzing && trackAnalysis && (
-          <div className="flex gap-2">
-            {[
-              { key: "overview", label: "Overview", icon: BarChart3 },
-              {
-                key: "detailed",
-                label: "Detailed Analysis",
-                icon: LineChart,
-              },
-              { key: "comparison", label: "Lap Comparison", icon: Eye },
-              {
-                key: "trends",
-                label: "Performance Trends",
-                icon: TrendingUp,
-              },
-            ].map((type) => (
-              <RacingButton
-                key={type.key}
-                variant={analysisType === type.key ? "racing" : "outline"}
-                racing={analysisType === type.key ? "blue" : undefined}
-                size="sm"
-                icon={type.icon}
-                onClick={() =>
-                  this.setState({ analysisType: type.key as any })
-                }
-              >
-                {type.label}
-              </RacingButton>
-            ))}
-          </div>
-        )}
-
-        {/* Overview Analysis */}
-        {!isAnalyzing && analysisType === "overview" && trackAnalysis && (
-          <>
-            {/* Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <DataCard
-                label="Best Lap"
-                value={this.formatTime(trackAnalysis.bestLapTime)}
-                icon={Trophy}
-                color="yellow"
-                trend="up"
-              />
-              <DataCard
-                label="Average Lap"
-                value={this.formatTime(trackAnalysis.averageLapTime)}
-                icon={Timer}
-                color="blue"
-                trend="neutral"
-              />
-              <DataCard
-                label="Consistency"
-                value={trackAnalysis.consistencyRating.toFixed(1)}
-                unit="%"
-                icon={Target}
-                color="green"
-                trend="up"
-              />
-              <DataCard
-                label="Total Laps"
-                value={trackAnalysis.totalLaps}
-                icon={Route}
-                color="purple"
-                trend="neutral"
-              />
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-black text-white">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6">
+          {/* Header */}
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+              <div className="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg w-fit">
+                <BarChart3 className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-purple-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                  Real Session Analysis
+                </h1>
+                <p className="text-gray-400 text-base sm:text-lg mt-1">
+                  Advanced telemetry analysis using real session data
+                </p>
+              </div>
             </div>
 
-            {/* Session Metrics */}
-            {sessionMetrics && (
-              <Card className="p-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-racing-green" />
-                  Session Metrics
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  <PerformanceMetric
-                    label="Total Distance"
-                    value={sessionMetrics.totalDistance / 1000}
-                    unit="km"
-                    format="decimal"
-                    color="blue"
-                  />
-                  <PerformanceMetric
-                    label="Session Time"
-                    value={this.formatDuration(sessionMetrics.totalTime)}
-                    color="green"
-                  />
-                  <PerformanceMetric
-                    label="Max Speed"
-                    value={sessionMetrics.maxSpeed}
-                    unit="km/h"
-                    format="decimal"
-                    color="red"
-                  />
-                  <PerformanceMetric
-                    label="Avg Engine Load"
-                    value={sessionMetrics.avgEngineLoad || 0}
-                    unit="%"
-                    format="decimal"
-                    color="yellow"
-                  />
+            {/* Data Source Info */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+              <div className="bg-gradient-to-r from-green-500/10 to-green-600/10 border border-green-500/20 rounded-xl p-3 sm:p-4">
+                <div className="text-xl sm:text-2xl font-bold text-green-400">{availableSessions.length}</div>
+                <div className="text-green-300 text-xs sm:text-sm font-medium">Total Sessions</div>
+              </div>
+              <div className="bg-gradient-to-r from-blue-500/10 to-blue-600/10 border border-blue-500/20 rounded-xl p-3 sm:p-4">
+                <div className="text-xl sm:text-2xl font-bold text-blue-400">{availableTracks.length}</div>
+                <div className="text-blue-300 text-xs sm:text-sm font-medium">Tracks</div>
+              </div>
+              <div className="bg-gradient-to-r from-purple-500/10 to-purple-600/10 border border-purple-500/20 rounded-xl p-3 sm:p-4">
+                <div className="text-xl sm:text-2xl font-bold text-purple-400">{selectedLaps.length}</div>
+                <div className="text-purple-300 text-xs sm:text-sm font-medium">Total Laps</div>
+              </div>
+              <div className="bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 border border-yellow-500/20 rounded-xl p-3 sm:p-4">
+                <div className="text-xl sm:text-2xl font-bold text-yellow-400">
+                  {trackAnalysis ? "✓" : "—"}
                 </div>
-              </Card>
-            )}
-
-            {/* Performance Insights */}
-            {performanceInsights && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Strengths */}
-                <Card className="p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-racing-green" />
-                    Strengths
-                  </h3>
-                  <div className="space-y-3">
-                    {performanceInsights.strengths.map((strength, index) => (
-                      <div
-                        key={index}
-                        className="p-3 bg-racing-green/10 border border-racing-green/30 rounded-lg"
-                      >
-                        <div className="font-medium text-racing-green mb-1">
-                          {strength.area}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {strength.description}
-                        </div>
-                        <div className="text-xs text-racing-green mt-2">
-                          Confidence: {(strength.confidence * 100).toFixed(0)}
-                          %
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-
-                {/* Improvements */}
-                <Card className="p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-racing-yellow" />
-                    Improvement Areas
-                  </h3>
-                  <div className="space-y-3">
-                    {performanceInsights.improvements.map(
-                      (improvement, index) => (
-                        <div
-                          key={index}
-                          className={`p-3 rounded-lg border ${
-                            improvement.priority === "high"
-                              ? "bg-racing-red/10 border-racing-red/30"
-                              : improvement.priority === "medium"
-                                ? "bg-racing-yellow/10 border-racing-yellow/30"
-                                : "bg-racing-blue/10 border-racing-blue/30"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="font-medium">
-                              {improvement.area}
-                            </div>
-                            <Badge
-                              variant={
-                                improvement.priority === "high"
-                                  ? "destructive"
-                                  : improvement.priority === "medium"
-                                    ? "default"
-                                    : "secondary"
-                              }
-                              className="text-xs"
-                            >
-                              {improvement.priority}
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground mb-2">
-                            {improvement.description}
-                          </div>
-                          <div className="text-xs font-medium text-racing-green">
-                            Potential gain: {improvement.potentialGain}
-                          </div>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                </Card>
+                <div className="text-yellow-300 text-xs sm:text-sm font-medium">Analysis Ready</div>
               </div>
-            )}
+            </div>
+          </div>
 
-            {/* Sector Analysis */}
-            <Card className="p-6">
-              <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-racing-purple" />
-                Sector Performance
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {trackAnalysis.sectors.map((sector) => (
-                  <Card
-                    key={sector.sectorNumber}
-                    className="p-4 border-racing-purple/20"
-                  >
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-racing-purple mb-2">
-                        Sector {sector.sectorNumber}
-                      </div>
-                      <div className="space-y-2 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">
-                            Best:{" "}
-                          </span>
-                          <span className="font-mono font-bold">
-                            {this.formatTime(sector.bestTime)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">
-                            Average:{" "}
-                          </span>
-                          <span className="font-mono">
-                            {this.formatTime(sector.averageTime)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">
-                            Top Speed:{" "}
-                          </span>
-                          <span className="font-bold">
-                            {sector.bestSpeed.toFixed(0)} km/h
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">
-                            Efficiency:{" "}
-                          </span>
-                          <span className="font-bold text-racing-green">
-                            {sector.throttleEfficiency.toFixed(1)}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </Card>
-          </>
-        )}
-
-        {/* Lap Comparison */}
-        {!isAnalyzing &&
-          analysisType === "comparison" &&
-          selectedLaps.length >= 2 && (
-            <Card className="p-6">
-              <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <Eye className="h-5 w-5 text-racing-blue" />
-                Lap Comparison
-              </h3>
-
-              {/* Lap Selection */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    Compare Lap 1
-                  </label>
+          {/* Controls */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+            {/* Control Panel */}
+            <div className="space-y-4 sm:space-y-6">
+              {/* Track Selection */}
+              <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+                <div className="p-4 sm:p-6">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                    <Route className="h-4 w-4" />
+                    Track Selection
+                  </h3>
                   <select
-                    className="w-full p-2 border border-border rounded-md bg-background"
-                    onChange={(e) => {
-                      const lap = selectedLaps[parseInt(e.target.value)];
-                      this.setState({ selectedLap1: lap });
-                    }}
+                    value={selectedTrack || ""}
+                    onChange={(e) => this.handleTrackChange(e.target.value)}
+                    className="w-full bg-gray-700/50 border border-gray-600/50 text-white rounded-lg p-2 mb-3"
+                    disabled={isAnalyzing}
                   >
-                    <option value="">Select lap...</option>
-                    {selectedLaps.map((lap, index) => (
-                      <option key={index} value={index}>
-                        Lap {lap.lapNumber} - {this.formatTime(lap.lapTime)}
+                    <option value="">Select Track</option>
+                    {availableTracks.map(track => (
+                      <option key={track} value={track}>{track}</option>
+                    ))}
+                  </select>
+                </div>
+              </Card>
+
+              {/* Session Selection */}
+              <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+                <div className="p-4 sm:p-6">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                    <Database className="h-4 w-4" />
+                    Session Selection
+                  </h3>
+                  <select
+                    value={selectedSession || ""}
+                    onChange={(e) => this.handleSessionChange(e.target.value)}
+                    className="w-full bg-gray-700/50 border border-gray-600/50 text-white rounded-lg p-2 mb-3"
+                    disabled={isAnalyzing}
+                  >
+                    <option value="">Select Session</option>
+                    {availableSessions.map(session => (
+                      <option key={session.id} value={session.id}>
+                        {session.name} - {session.date.toLocaleDateString()}
                       </option>
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    Compare Lap 2
-                  </label>
-                  <select
-                    className="w-full p-2 border border-border rounded-md bg-background"
-                    onChange={(e) => {
-                      const lap = selectedLaps[parseInt(e.target.value)];
-                      this.setState({ selectedLap2: lap });
-                    }}
-                  >
-                    <option value="">Select lap...</option>
-                    {selectedLaps.map((lap, index) => (
-                      <option key={index} value={index}>
-                        Lap {lap.lapNumber} - {this.formatTime(lap.lapTime)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              </Card>
 
-              {selectedLap1 && selectedLap2 && (
-                <div className="text-center">
+              {/* Analysis Controls */}
+              <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+                <div className="p-4 sm:p-6">
+                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Analysis Controls
+                  </h3>
+                                     <div className="space-y-2">
+                     <RacingButton
+                       onClick={this.loadRealData}
+                       disabled={isAnalyzing}
+                       className="w-full bg-blue-600 hover:bg-blue-700"
+                     >
+                       <RefreshCw className={`h-4 w-4 mr-2 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                       Refresh Data
+                     </RacingButton>
+                     <RacingButton
+                       onClick={this.generateSampleData}
+                       disabled={isAnalyzing}
+                       className="w-full bg-orange-600 hover:bg-orange-700"
+                     >
+                       <Database className="h-4 w-4 mr-2" />
+                       Generate Sample Data
+                     </RacingButton>
+                     <RacingButton
+                       onClick={this.exportAnalysisData}
+                       disabled={!trackAnalysis}
+                       className="w-full bg-green-600 hover:bg-green-700"
+                     >
+                       <Download className="h-4 w-4 mr-2" />
+                       Export Analysis
+                     </RacingButton>
+                    <label className="block">
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={(e) => e.target.files?.[0] && this.importAnalysisData(e.target.files[0])}
+                        className="hidden"
+                      />
+                      <div className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-lg p-2 text-center cursor-pointer transition-colors">
+                        <Upload className="h-4 w-4 mr-2 inline" />
+                        Import Analysis
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Navigation */}
+              <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+                <div className="p-4 sm:p-6">
                   <RacingButton
-                    variant="racing"
-                    racing="blue"
-                    onClick={() =>
-                      this.compareLaps(selectedLap1, selectedLap2)
-                    }
+                    onClick={() => this.handleNavigation("/mode-selection")}
+                    className="w-full bg-gray-600 hover:bg-gray-700"
                   >
-                    Compare Laps
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back to Mode Selection
                   </RacingButton>
                 </div>
-              )}
+              </Card>
+            </div>
 
-              {/* Comparison Results */}
-              {lapComparison && (
-                <div className="mt-6 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card className="p-4 border-racing-blue/30">
-                      <h4 className="font-medium text-racing-blue mb-3">
-                        Lap {lapComparison.lap1.lapNumber}
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">
-                            Time:{" "}
-                          </span>
-                          <span className="font-mono font-bold">
-                            {this.formatTime(lapComparison.lap1.lapTime)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">
-                            Max Speed:{" "}
-                          </span>
-                          <span>
-                            {lapComparison.lap1.maxSpeed.toFixed(1)} km/h
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">
-                            Avg Speed:{" "}
-                          </span>
-                          <span>
-                            {lapComparison.lap1.averageSpeed.toFixed(1)} km/h
-                          </span>
-                        </div>
-                      </div>
-                    </Card>
-
-                    <Card className="p-4 border-racing-green/30">
-                      <h4 className="font-medium text-racing-green mb-3">
-                        Lap {lapComparison.lap2.lapNumber}
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">
-                            Time:{" "}
-                          </span>
-                          <span className="font-mono font-bold">
-                            {this.formatTime(lapComparison.lap2.lapTime)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">
-                            Max Speed:{" "}
-                          </span>
-                          <span>
-                            {lapComparison.lap2.maxSpeed.toFixed(1)} km/h
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">
-                            Avg Speed:{" "}
-                          </span>
-                          <span>
-                            {lapComparison.lap2.averageSpeed.toFixed(1)} km/h
-                          </span>
-                        </div>
-                      </div>
-                    </Card>
+            {/* Analysis Results */}
+            <div className="lg:col-span-3 space-y-4 sm:space-y-6">
+              {isAnalyzing ? (
+                <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+                  <div className="p-8 text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+                    <h3 className="text-white font-semibold mb-2">Analyzing Real Data</h3>
+                    <p className="text-gray-400">Processing telemetry and generating insights...</p>
                   </div>
+                </Card>
+              ) : (
+                <>
+                  {/* Track Analysis Overview */}
+                  {trackAnalysis && (
+                    <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+                      <div className="p-4 sm:p-6">
+                        <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                          <Trophy className="h-5 w-5 text-yellow-400" />
+                          Track Performance Analysis
+                        </h3>
+                                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                           <DataCard
+                             label="Best Lap Time"
+                             value={this.formatTime(trackAnalysis.bestLapTime)}
+                             icon={Clock}
+                             trend="down"
+                           />
+                           <DataCard
+                             label="Average Lap Time"
+                             value={this.formatTime(trackAnalysis.averageLapTime)}
+                             icon={Timer}
+                             trend="neutral"
+                           />
+                           <DataCard
+                             label="Consistency Rating"
+                             value={`${trackAnalysis.consistencyRating.toFixed(1)}%`}
+                             icon={Target}
+                             trend={trackAnalysis.consistencyRating > 80 ? "up" : "down"}
+                           />
+                           <DataCard
+                             label="Total Laps"
+                             value={trackAnalysis.totalLaps.toString()}
+                             icon={Activity}
+                             trend="neutral"
+                           />
+                         </div>
+                      </div>
+                    </Card>
+                  )}
 
-                  <Card className="p-4">
-                    <h4 className="font-medium mb-3 text-center">
-                      Time Difference:{" "}
-                      <span
-                        className={`font-mono font-bold ${
-                          lapComparison.timeDifference > 0
-                            ? "text-racing-red"
-                            : "text-racing-green"
-                        }`}
-                      >
-                        {lapComparison.timeDifference > 0 ? "+" : ""}
-                        {(lapComparison.timeDifference / 1000).toFixed(3)}s
-                      </span>
-                    </h4>
-                    <p className="text-center text-sm text-muted-foreground">
-                      {lapComparison.timeDifference > 0
-                        ? `Lap ${lapComparison.lap2.lapNumber} was slower`
-                        : `Lap ${lapComparison.lap2.lapNumber} was faster`}
-                    </p>
-                  </Card>
-                </div>
+                  {/* Session Metrics */}
+                  {sessionMetrics && (
+                    <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+                      <div className="p-4 sm:p-6">
+                        <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                          <Gauge className="h-5 w-5 text-blue-400" />
+                          Session Metrics
+                        </h3>
+                                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                           <DataCard
+                             label="Total Distance"
+                             value={this.formatDistance(sessionMetrics.totalDistance)}
+                             icon={Route}
+                             trend="neutral"
+                           />
+                           <DataCard
+                             label="Max Speed"
+                             value={`${sessionMetrics.maxSpeed.toFixed(0)} km/h`}
+                             icon={Zap}
+                             trend="up"
+                           />
+                           <DataCard
+                             label="Average Speed"
+                             value={`${sessionMetrics.averageSpeed.toFixed(0)} km/h`}
+                             icon={Gauge}
+                             trend="neutral"
+                           />
+                           <DataCard
+                             label="Session Duration"
+                             value={this.formatDuration(sessionMetrics.totalTime)}
+                             icon={Clock}
+                             trend="neutral"
+                           />
+                         </div>
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* Performance Insights */}
+                  {performanceInsights && (
+                    <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+                      <div className="p-4 sm:p-6">
+                        <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                          <Eye className="h-5 w-5 text-purple-400" />
+                          Performance Insights
+                        </h3>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <div>
+                            <h4 className="text-green-400 font-medium mb-2">Strengths</h4>
+                            {performanceInsights.strengths.length > 0 ? (
+                              <ul className="space-y-1">
+                                {performanceInsights.strengths.map((strength, index) => (
+                                  <li key={index} className="text-sm text-gray-300 flex items-start gap-2">
+                                    <CheckCircle className="h-3 w-3 text-green-400 mt-0.5 flex-shrink-0" />
+                                    <span>{strength.description}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-sm text-gray-500">No specific strengths identified yet</p>
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="text-yellow-400 font-medium mb-2">Areas for Improvement</h4>
+                            {performanceInsights.improvements.length > 0 ? (
+                              <ul className="space-y-1">
+                                {performanceInsights.improvements.map((improvement, index) => (
+                                  <li key={index} className="text-sm text-gray-300 flex items-start gap-2">
+                                    <AlertCircle className="h-3 w-3 text-yellow-400 mt-0.5 flex-shrink-0" />
+                                    <span>{improvement.description}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-sm text-gray-500">No specific improvements identified yet</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* Lap List */}
+                  {selectedLaps.length > 0 && (
+                    <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+                      <div className="p-4 sm:p-6">
+                        <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                          <Timer className="h-5 w-5 text-cyan-400" />
+                          Lap Analysis ({selectedLaps.length} laps)
+                        </h3>
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {selectedLaps.map((lap, index) => (
+                            <div
+                              key={lap.lapNumber}
+                              className="flex items-center justify-between p-3 bg-gray-700/30 rounded-lg border border-gray-600/50 hover:bg-gray-700/50 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <Badge variant="outline" className="text-xs">
+                                  Lap {lap.lapNumber}
+                                </Badge>
+                                <div>
+                                  <div className="text-white font-medium">
+                                    {this.formatTime(lap.lapTime)}
+                                  </div>
+                                  <div className="text-xs text-gray-400">
+                                    Max: {lap.maxSpeed.toFixed(0)} km/h | Avg: {lap.averageSpeed.toFixed(0)} km/h
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  variant={lap.isValidLap ? "default" : "destructive"}
+                                  className="text-xs"
+                                >
+                                  {lap.isValidLap ? "Valid" : "Invalid"}
+                                </Badge>
+                                <RacingButton
+                                  size="sm"
+                                  onClick={() => {
+                                    if (selectedLap1 === null) {
+                                      this.setState({ selectedLap1: lap });
+                                    } else if (selectedLap2 === null && selectedLap1 !== lap) {
+                                      this.compareLaps(selectedLap1, lap);
+                                    }
+                                  }}
+                                  disabled={selectedLap1 === lap}
+                                  className="text-xs"
+                                >
+                                  Compare
+                                </RacingButton>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* No Data Message */}
+                  {!trackAnalysis && !sessionMetrics && !isAnalyzing && (
+                    <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+                      <div className="p-8 text-center">
+                        <Database className="h-16 w-16 text-gray-500 mx-auto mb-4" />
+                        <h3 className="text-white font-semibold mb-2">No Analysis Data</h3>
+                        <p className="text-gray-400 mb-4">
+                          Select a track or session to begin real data analysis
+                        </p>
+                        <RacingButton
+                          onClick={this.loadRealData}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Load Session Data
+                        </RacingButton>
+                      </div>
+                    </Card>
+                  )}
+                </>
               )}
-            </Card>
-          )}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
