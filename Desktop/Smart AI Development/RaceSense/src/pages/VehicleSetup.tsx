@@ -39,7 +39,8 @@ interface VehicleSetup {
     rearCompound: string;
   };
   engine: {
-    type: string;
+    cylinders: number;
+    aspiration: string;
     maxPower: number;
     maxTorque: number;
     peakRpm: number;
@@ -320,7 +321,8 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & {
         rearCompound: "Medium",
       },
       engine: {
-        type: "V8 Naturally Aspirated",
+        cylinders: 8,
+        aspiration: "Naturally Aspirated",
         maxPower: 485,
         maxTorque: 520,
         peakRpm: 7200,
@@ -797,29 +799,38 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & {
                       <h4 className="font-medium text-racing-red">
                         Engine Type
                       </h4>
-                      <select
-                        value={setup.engine.type}
-                        onChange={(e) =>
-                          this.updateSetupValue(
-                            ["engine", "type"],
-                            e.target.value,
-                          )
-                        }
-                        className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
-                        disabled={obdConnected}
-                      >
-                        <option value="V8 Naturally Aspirated">
-                          V8 Naturally Aspirated
-                        </option>
-                        <option value="V8 Turbo">V8 Turbo</option>
-                        <option value="V6 Turbo">V6 Turbo</option>
-                        <option value="V10 Naturally Aspirated">
-                          V10 Naturally Aspirated
-                        </option>
-                        <option value="V12 Naturally Aspirated">
-                          V12 Naturally Aspirated
-                        </option>
-                      </select>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="engine-cylinders">Cylinders</Label>
+                          <select
+                            id="engine-cylinders"
+                            value={setup.engine.cylinders}
+                            onChange={e => this.updateSetupValue(["engine", "cylinders"], parseInt(e.target.value))}
+                            className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
+                            disabled={obdConnected}
+                          >
+                            {[3, 4, 5, 6, 8, 10, 12, 16].map(n => (
+                              <option key={n} value={n}>{n} Cylinders</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <Label htmlFor="engine-aspiration">Aspiration</Label>
+                          <select
+                            id="engine-aspiration"
+                            value={setup.engine.aspiration}
+                            onChange={e => this.updateSetupValue(["engine", "aspiration"], e.target.value)}
+                            className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
+                            disabled={obdConnected}
+                          >
+                            <option value="Naturally Aspirated">Naturally Aspirated</option>
+                            <option value="Turbo">Turbo</option>
+                            <option value="Supercharged">Supercharged</option>
+                            <option value="Hybrid">Hybrid</option>
+                            <option value="Electric">Electric</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
