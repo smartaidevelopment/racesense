@@ -12,7 +12,9 @@ import {
   Copy,
   Trash2,
   Car,
+  Lock,
 } from "lucide-react";
+import { obdIntegrationService, LiveOBDData } from "@/services/OBDIntegrationService";
 
 interface VehicleSetup {
   name: string;
@@ -62,7 +64,7 @@ interface VehicleSetupState {
   setup: VehicleSetup;
 }
 
-class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
+class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD: LiveOBDData | null, obdConnected: boolean, obdError: string | null, connecting: boolean }> {
   private savedProfiles = [
     "Default Setup",
     "Silverstone Qualifying",
@@ -70,6 +72,10 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
     "Suzuka Wet Weather",
     "Monza High Speed",
   ];
+
+  private unsubscribeOBD?: () => void;
+  private unsubscribeOBDConn?: () => void;
+  private unsubscribeOBDErr?: () => void;
 
   constructor(props: {}) {
     super(props);
@@ -117,8 +123,55 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
           differential: 15,
         },
       },
+      liveOBD: null,
+      obdConnected: obdIntegrationService.isDeviceConnected(),
+      obdError: null,
+      connecting: false,
     };
   }
+
+  componentDidMount() {
+    // Subscribe to OBD data
+    this.unsubscribeOBD = obdIntegrationService.onDataUpdate((data) => {
+      this.setState({ liveOBD: data });
+      // Optionally update setup fields with live data
+      this.updateSetupWithLiveOBD(data);
+    });
+    this.unsubscribeOBDConn = obdIntegrationService.onConnectionChange((connected) => {
+      this.setState({ obdConnected: connected });
+    });
+    this.unsubscribeOBDErr = obdIntegrationService.onError((err) => {
+      this.setState({ obdError: err });
+    });
+    // Set initial state if already connected
+    if (obdIntegrationService.isDeviceConnected()) {
+      const data = obdIntegrationService.getCurrentData();
+      if (data) {
+        this.setState({ liveOBD: data });
+        this.updateSetupWithLiveOBD(data);
+      }
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.unsubscribeOBD) this.unsubscribeOBD();
+    if (this.unsubscribeOBDConn) this.unsubscribeOBDConn();
+    if (this.unsubscribeOBDErr) this.unsubscribeOBDErr();
+  }
+
+  private updateSetupWithLiveOBD = (data: LiveOBDData) => {
+    // Map OBD data to setup fields (engine, gearbox, etc.)
+    this.setState((prevState) => {
+      const newSetup = { ...prevState.setup };
+      // Engine
+      if (typeof data.rpm === 'number') newSetup.engine.peakRpm = Math.round(data.rpm);
+      if (typeof data.coolantTemp === 'number') newSetup.engine.maxPower = Math.round(400 + (data.coolantTemp - 80) * 2); // Example mapping
+      if (typeof data.throttlePosition === 'number') newSetup.engine.maxTorque = Math.round(400 + data.throttlePosition);
+      // Gearbox (not directly available, but could be inferred)
+      // ...
+      return { setup: newSetup };
+    });
+  };
 
   private handleProfileChange = (profile: string) => {
     this.setState({ currentProfile: profile });
@@ -156,8 +209,57 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
     });
   };
 
+  handleOBDConnect = async () => {
+    this.setState({ connecting: true, obdError: null });
+    try {
+      await obdIntegrationService.connectBluetooth();
+    } catch (err: any) {
+      this.setState({ obdError: err.message || String(err) });
+    } finally {
+      this.setState({ connecting: false });
+    }
+  };
+
+  handleOBDDisconnect = async () => {
+    this.setState({ connecting: true, obdError: null });
+    try {
+      await obdIntegrationService.disconnect();
+    } catch (err: any) {
+      this.setState({ obdError: err.message || String(err) });
+    } finally {
+      this.setState({ connecting: false });
+    }
+  };
+
+  renderLiveTelemetryPanel() {
+    const { liveOBD, obdConnected } = this.state;
+    if (!obdConnected || !liveOBD) return null;
+    return (
+      <Card className="mb-6 p-4 bg-card/80 border-green-700/40">
+        <div className="flex items-center gap-3 mb-2">
+          <span className="font-bold text-green-400">Live Telemetry</span>
+          <span className="text-xs text-green-300">(OBD Connected)</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+          <div>Speed: <span className="font-mono">{liveOBD.speed?.toFixed(1) ?? "-"} km/h</span></div>
+          <div>RPM: <span className="font-mono">{liveOBD.rpm?.toFixed(0) ?? "-"}</span></div>
+          <div>Throttle: <span className="font-mono">{liveOBD.throttlePosition?.toFixed(1) ?? "-"} %</span></div>
+          <div>Engine Load: <span className="font-mono">{liveOBD.engineLoad?.toFixed(1) ?? "-"} %</span></div>
+          <div>Coolant Temp: <span className="font-mono">{liveOBD.coolantTemp?.toFixed(1) ?? "-"} °C</span></div>
+          <div>Intake Air Temp: <span className="font-mono">{liveOBD.intakeAirTemp?.toFixed(1) ?? "-"} °C</span></div>
+          <div>Fuel Level: <span className="font-mono">{liveOBD.fuelLevel?.toFixed(1) ?? "-"} %</span></div>
+          <div>Voltage: <span className="font-mono">{liveOBD.voltage?.toFixed(2) ?? "-"} V</span></div>
+          <div>Oil Temp: <span className="font-mono">{liveOBD.oilTemp?.toFixed(1) ?? "-"} °C</span></div>
+          <div>Fuel Pressure: <span className="font-mono">{liveOBD.fuelPressure?.toFixed(1) ?? "-"} kPa</span></div>
+          <div>Manifold Pressure: <span className="font-mono">{liveOBD.manifoldPressure?.toFixed(1) ?? "-"} kPa</span></div>
+          <div>Boost: <span className="font-mono">{liveOBD.boost?.toFixed(1) ?? "-"} kPa</span></div>
+        </div>
+      </Card>
+    );
+  }
+
   render() {
-    const { currentProfile, activeTab, setup } = this.state;
+    const { currentProfile, activeTab, setup, liveOBD, obdConnected, obdError, connecting } = this.state;
 
     return (
       <div className="min-h-screen bg-racing-dark text-white">
@@ -183,28 +285,31 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                   <p className="text-muted-foreground">
                     Fine-tune your racing machine
                   </p>
+                  {obdConnected && (
+                    <span className="ml-2 px-2 py-1 bg-green-700 text-xs rounded font-bold">Live</span>
+                  )}
                 </div>
               </div>
             </div>
-
-            <div className="flex gap-3">
+            <div className="flex gap-3 items-center">
               <RacingButton
-                variant="outline"
-                onClick={this.resetSetup}
-                className="border-border/50 hover:bg-card/50"
+                variant={obdConnected ? "destructive" : "default"}
+                onClick={obdConnected ? this.handleOBDDisconnect : this.handleOBDConnect}
+                disabled={connecting}
+                className={obdConnected ? "bg-red-700 hover:bg-red-800" : "bg-green-700 hover:bg-green-800"}
               >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Reset
+                {connecting ? (
+                  <span>Connecting...</span>
+                ) : (
+                  <>{obdConnected ? "Disconnect OBD" : "Connect OBD"}</>
+                )}
               </RacingButton>
-              <RacingButton
-                onClick={this.saveSetup}
-                className="bg-racing-green hover:bg-racing-green/80"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Save Setup
-              </RacingButton>
+              {obdError && <span className="text-xs text-red-400 ml-2">{obdError}</span>}
             </div>
           </div>
+
+          {/* Live Telemetry Panel */}
+          {this.renderLiveTelemetryPanel()}
 
           {/* Profile Selection */}
           <Card className="p-6 bg-card/80 backdrop-blur-sm border-border/50 mb-6">
@@ -302,6 +407,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                         max={15}
                         step={0.1}
                         className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                        disabled={obdConnected}
                       />
                     </div>
 
@@ -320,6 +426,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                         max={100}
                         step={5}
                         className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                        disabled={obdConnected}
                       />
                     </div>
 
@@ -338,6 +445,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                         max={1}
                         step={0.1}
                         className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                        disabled={obdConnected}
                       />
                     </div>
                   </div>
@@ -363,6 +471,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                         max={15}
                         step={0.1}
                         className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                        disabled={obdConnected}
                       />
                     </div>
 
@@ -381,6 +490,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                         max={100}
                         step={5}
                         className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                        disabled={obdConnected}
                       />
                     </div>
 
@@ -399,6 +509,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                         max={1}
                         step={0.1}
                         className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                        disabled={obdConnected}
                       />
                     </div>
                   </div>
@@ -430,6 +541,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                           )
                         }
                         className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
+                        disabled={obdConnected}
                       >
                         <option value="Racing Slicks">Racing Slicks</option>
                         <option value="Semi-Slicks">Semi-Slicks</option>
@@ -449,6 +561,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                           )
                         }
                         className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
+                        disabled={obdConnected}
                       >
                         <option value="Soft">Soft</option>
                         <option value="Medium">Medium</option>
@@ -474,6 +587,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                           max={3.0}
                           step={0.1}
                           className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                          disabled={obdConnected}
                         />
                       </div>
                       <div className="space-y-2">
@@ -493,6 +607,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                           max={3.0}
                           step={0.1}
                           className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                          disabled={obdConnected}
                         />
                       </div>
                     </div>
@@ -515,6 +630,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                           )
                         }
                         className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
+                        disabled={obdConnected}
                       >
                         <option value="Racing Slicks">Racing Slicks</option>
                         <option value="Semi-Slicks">Semi-Slicks</option>
@@ -534,6 +650,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                           )
                         }
                         className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
+                        disabled={obdConnected}
                       >
                         <option value="Soft">Soft</option>
                         <option value="Medium">Medium</option>
@@ -559,6 +676,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                           max={3.0}
                           step={0.1}
                           className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                          disabled={obdConnected}
                         />
                       </div>
                       <div className="space-y-2">
@@ -578,6 +696,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                           max={3.0}
                           step={0.1}
                           className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                          disabled={obdConnected}
                         />
                       </div>
                     </div>
@@ -606,6 +725,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                         )
                       }
                       className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
+                      disabled={obdConnected}
                     >
                       <option value="V8 Naturally Aspirated">
                         V8 Naturally Aspirated
@@ -637,6 +757,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                         max={800}
                         step={5}
                         className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                        disabled={obdConnected}
                       />
                     </div>
                     <div className="space-y-2">
@@ -654,6 +775,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                         max={900}
                         step={5}
                         className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                        disabled={obdConnected}
                       />
                     </div>
                   </div>
@@ -681,6 +803,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                         )
                       }
                       className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
+                      disabled={obdConnected}
                     >
                       <option value="Sequential 6-Speed">
                         Sequential 6-Speed
@@ -719,6 +842,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState> {
                           max={5}
                           step={0.01}
                           className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                          disabled={obdConnected}
                         />
                       </div>
                     ))}
