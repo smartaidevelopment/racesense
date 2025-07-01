@@ -262,10 +262,10 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
     const { currentProfile, activeTab, setup, liveOBD, obdConnected, obdError, connecting } = this.state;
 
     return (
-      <div className="min-h-screen bg-racing-dark text-white">
-        <div className="container mx-auto px-4 py-8">
+      <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-racing-dark text-white">
+        <div className="container mx-auto px-4 py-10 max-w-4xl">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-10">
             <div className="flex items-center gap-4">
               <RacingButton
                 variant="outline"
@@ -277,16 +277,16 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
                 Back
               </RacingButton>
               <div className="flex items-center gap-3">
-                <Car className="h-8 w-8 text-racing-red" />
+                <Car className="h-10 w-10 text-racing-red drop-shadow-lg" />
                 <div>
-                  <h1 className="text-3xl font-bold text-racing-red">
+                  <h1 className="text-4xl font-extrabold text-racing-red tracking-tight drop-shadow-lg">
                     Vehicle Setup
                   </h1>
-                  <p className="text-muted-foreground">
-                    Fine-tune your racing machine
+                  <p className="text-muted-foreground text-base mt-1">
+                    Fine-tune your racing machine for peak performance
                   </p>
                   {obdConnected && (
-                    <span className="ml-2 px-2 py-1 bg-green-700 text-xs rounded font-bold">Live</span>
+                    <span className="ml-2 px-2 py-1 bg-green-700 text-xs rounded font-bold animate-pulse">Live</span>
                   )}
                 </div>
               </div>
@@ -312,27 +312,24 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
           {this.renderLiveTelemetryPanel()}
 
           {/* Profile Selection */}
-          <Card className="p-6 bg-card/80 backdrop-blur-sm border-border/50 mb-6">
+          <Card className="p-6 bg-gradient-to-r from-gray-900/80 to-gray-800/80 border border-gray-700/60 mb-8 shadow-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Wrench className="h-6 w-6 text-racing-yellow" />
                 <div>
-                  <h3 className="text-xl font-semibold text-racing-yellow">
-                    Setup Profile
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Load or save vehicle configurations
-                  </p>
+                  <h3 className="text-xl font-semibold text-racing-yellow">Setup Profile</h3>
+                  <p className="text-muted-foreground text-sm">Load or save vehicle configurations</p>
                 </div>
               </div>
-
               <div className="flex items-center gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="profile">Current Profile</Label>
                   <select
+                    id="profile"
+                    name="profile"
                     value={currentProfile}
                     onChange={(e) => this.handleProfileChange(e.target.value)}
-                    className="px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white min-w-[200px]"
+                    className="px-3 py-2 bg-background/60 border border-border/50 rounded-md text-white min-w-[200px] focus:ring-2 focus:ring-racing-orange"
                   >
                     {this.savedProfiles.map((profile) => (
                       <option key={profile} value={profile}>
@@ -341,12 +338,11 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
                     ))}
                   </select>
                 </div>
-
                 <div className="flex gap-2">
-                  <RacingButton size="sm" variant="outline">
+                  <RacingButton size="sm" variant="outline" title="Copy Profile">
                     <Copy className="h-4 w-4" />
                   </RacingButton>
-                  <RacingButton size="sm" variant="outline">
+                  <RacingButton size="sm" variant="outline" title="Delete Profile">
                     <Trash2 className="h-4 w-4" />
                   </RacingButton>
                 </div>
@@ -355,9 +351,9 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
           </Card>
 
           {/* Setup Tabs */}
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* Tab Navigation */}
-            <div className="grid w-full grid-cols-4 bg-card/50 rounded-lg p-1">
+            <div className="flex w-full gap-2 bg-gradient-to-r from-gray-800/80 to-gray-900/80 rounded-lg p-1 mb-2 shadow">
               {[
                 { id: "suspension", label: "🔧 Suspension" },
                 { id: "tires", label: "🛞 Tires" },
@@ -367,11 +363,12 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
                 <button
                   key={tab.id}
                   onClick={() => this.handleTabChange(tab.id)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    activeTab === tab.id
-                      ? "bg-racing-orange text-white"
-                      : "text-muted-foreground hover:text-white hover:bg-card/50"
-                  }`}
+                  className={`flex-1 px-4 py-2 rounded-md text-base font-semibold transition-colors duration-150 shadow-sm focus:outline-none focus:ring-2 focus:ring-racing-orange
+                    ${activeTab === tab.id
+                      ? "bg-racing-orange text-white drop-shadow-lg"
+                      : "text-muted-foreground hover:text-white hover:bg-gray-700/60"}
+                  `}
+                  aria-selected={activeTab === tab.id}
                 >
                   {tab.label}
                 </button>
@@ -379,477 +376,446 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
             </div>
 
             {/* Tab Content */}
-            {activeTab === "suspension" && (
-              <Card className="p-6 bg-card/80 backdrop-blur-sm border-border/50">
-                <h3 className="text-xl font-semibold text-racing-blue mb-6">
-                  Suspension Setup
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Front Suspension */}
-                  <div className="space-y-4">
-                    <h4 className="font-medium text-racing-blue">Front</h4>
-
-                    <div className="space-y-2">
-                      <Label>
-                        Spring Rate: {setup.suspension.frontSpringRate} N/mm
-                      </Label>
-                      <input
-                        type="range"
-                        value={setup.suspension.frontSpringRate}
-                        onChange={(e) =>
-                          this.updateSetupValue(
-                            ["suspension", "frontSpringRate"],
-                            parseFloat(e.target.value),
-                          )
-                        }
-                        min={5}
-                        max={15}
-                        step={0.1}
-                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                        disabled={obdConnected}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Damping: {setup.suspension.frontDamping}%</Label>
-                      <input
-                        type="range"
-                        value={setup.suspension.frontDamping}
-                        onChange={(e) =>
-                          this.updateSetupValue(
-                            ["suspension", "frontDamping"],
-                            parseInt(e.target.value),
-                          )
-                        }
-                        min={10}
-                        max={100}
-                        step={5}
-                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                        disabled={obdConnected}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Toe: {setup.suspension.frontToe}°</Label>
-                      <input
-                        type="range"
-                        value={setup.suspension.frontToe}
-                        onChange={(e) =>
-                          this.updateSetupValue(
-                            ["suspension", "frontToe"],
-                            parseFloat(e.target.value),
-                          )
-                        }
-                        min={-1}
-                        max={1}
-                        step={0.1}
-                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                        disabled={obdConnected}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Rear Suspension */}
-                  <div className="space-y-4">
-                    <h4 className="font-medium text-racing-blue">Rear</h4>
-
-                    <div className="space-y-2">
-                      <Label>
-                        Spring Rate: {setup.suspension.rearSpringRate} N/mm
-                      </Label>
-                      <input
-                        type="range"
-                        value={setup.suspension.rearSpringRate}
-                        onChange={(e) =>
-                          this.updateSetupValue(
-                            ["suspension", "rearSpringRate"],
-                            parseFloat(e.target.value),
-                          )
-                        }
-                        min={5}
-                        max={15}
-                        step={0.1}
-                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                        disabled={obdConnected}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Damping: {setup.suspension.rearDamping}%</Label>
-                      <input
-                        type="range"
-                        value={setup.suspension.rearDamping}
-                        onChange={(e) =>
-                          this.updateSetupValue(
-                            ["suspension", "rearDamping"],
-                            parseInt(e.target.value),
-                          )
-                        }
-                        min={10}
-                        max={100}
-                        step={5}
-                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                        disabled={obdConnected}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Toe: {setup.suspension.rearToe}°</Label>
-                      <input
-                        type="range"
-                        value={setup.suspension.rearToe}
-                        onChange={(e) =>
-                          this.updateSetupValue(
-                            ["suspension", "rearToe"],
-                            parseFloat(e.target.value),
-                          )
-                        }
-                        min={-1}
-                        max={1}
-                        step={0.1}
-                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                        disabled={obdConnected}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {activeTab === "tires" && (
-              <Card className="p-6 bg-card/80 backdrop-blur-sm border-border/50">
-                <h3 className="text-xl font-semibold text-racing-green mb-6">
-                  Tire Configuration
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Front Tires */}
-                  <div className="space-y-4">
-                    <h4 className="font-medium text-racing-green">
-                      Front Tires
-                    </h4>
-
-                    <div className="space-y-2">
-                      <Label>Tire Type</Label>
-                      <select
-                        value={setup.tires.frontType}
-                        onChange={(e) =>
-                          this.updateSetupValue(
-                            ["tires", "frontType"],
-                            e.target.value,
-                          )
-                        }
-                        className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
-                        disabled={obdConnected}
-                      >
-                        <option value="Racing Slicks">Racing Slicks</option>
-                        <option value="Semi-Slicks">Semi-Slicks</option>
-                        <option value="Street Tires">Street Tires</option>
-                        <option value="Wet Weather">Wet Weather</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Compound</Label>
-                      <select
-                        value={setup.tires.frontCompound}
-                        onChange={(e) =>
-                          this.updateSetupValue(
-                            ["tires", "frontCompound"],
-                            e.target.value,
-                          )
-                        }
-                        className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
-                        disabled={obdConnected}
-                      >
-                        <option value="Soft">Soft</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Hard">Hard</option>
-                      </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>
-                          Left Pressure: {setup.tires.frontLeftPressure} bar
-                        </Label>
+            <div className="rounded-xl bg-gradient-to-br from-gray-900/80 to-gray-800/80 border border-gray-700/60 shadow-lg p-6">
+              {activeTab === "suspension" && (
+                <>
+                  <h3 className="text-xl font-bold text-racing-blue mb-6 border-b border-gray-700 pb-2">Suspension Setup</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Front Suspension */}
+                    <div className="space-y-6">
+                      <h4 className="font-semibold text-racing-blue mb-2">Front</h4>
+                      <div className="space-y-3">
+                        <Label>Spring Rate: {setup.suspension.frontSpringRate} N/mm</Label>
                         <input
                           type="range"
-                          value={setup.tires.frontLeftPressure}
-                          onChange={(e) =>
-                            this.updateSetupValue(
-                              ["tires", "frontLeftPressure"],
-                              parseFloat(e.target.value),
-                            )
-                          }
-                          min={1.5}
-                          max={3.0}
+                          value={setup.suspension.frontSpringRate}
+                          onChange={(e) => this.updateSetupValue(["suspension", "frontSpringRate"], parseFloat(e.target.value))}
+                          min={5}
+                          max={15}
                           step={0.1}
-                          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-racing-blue"
+                          disabled={obdConnected}
+                        />
+                        <Label>Damping: {setup.suspension.frontDamping}</Label>
+                        <input
+                          type="range"
+                          value={setup.suspension.frontDamping}
+                          onChange={(e) => this.updateSetupValue(["suspension", "frontDamping"], parseInt(e.target.value))}
+                          min={40}
+                          max={100}
+                          step={1}
+                          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-racing-blue"
+                          disabled={obdConnected}
+                        />
+                        <Label>Toe: {setup.suspension.frontToe}°</Label>
+                        <input
+                          type="range"
+                          value={setup.suspension.frontToe}
+                          onChange={(e) => this.updateSetupValue(["suspension", "frontToe"], parseFloat(e.target.value))}
+                          min={-1}
+                          max={1}
+                          step={0.01}
+                          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-racing-blue"
+                          disabled={obdConnected}
+                        />
+                        <Label>Ackerman: {setup.suspension.ackerman}°</Label>
+                        <input
+                          type="range"
+                          value={setup.suspension.ackerman}
+                          onChange={(e) => this.updateSetupValue(["suspension", "ackerman"], parseInt(e.target.value))}
+                          min={0}
+                          max={30}
+                          step={1}
+                          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-racing-blue"
+                          disabled={obdConnected}
+                        />
+                        <Label>Track Width: {setup.suspension.trackWidth} mm</Label>
+                        <input
+                          type="range"
+                          value={setup.suspension.trackWidth}
+                          onChange={(e) => this.updateSetupValue(["suspension", "trackWidth"], parseInt(e.target.value))}
+                          min={1600}
+                          max={2000}
+                          step={1}
+                          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-racing-blue"
                           disabled={obdConnected}
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>
-                          Right Pressure: {setup.tires.frontRightPressure} bar
-                        </Label>
+                    </div>
+                    {/* Rear Suspension */}
+                    <div className="space-y-6">
+                      <h4 className="font-semibold text-racing-blue mb-2">Rear</h4>
+                      <div className="space-y-3">
+                        <Label>Spring Rate: {setup.suspension.rearSpringRate} N/mm</Label>
                         <input
                           type="range"
-                          value={setup.tires.frontRightPressure}
-                          onChange={(e) =>
-                            this.updateSetupValue(
-                              ["tires", "frontRightPressure"],
-                              parseFloat(e.target.value),
-                            )
-                          }
-                          min={1.5}
-                          max={3.0}
+                          value={setup.suspension.rearSpringRate}
+                          onChange={(e) => this.updateSetupValue(["suspension", "rearSpringRate"], parseFloat(e.target.value))}
+                          min={5}
+                          max={15}
                           step={0.1}
-                          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-racing-blue"
+                          disabled={obdConnected}
+                        />
+                        <Label>Damping: {setup.suspension.rearDamping}</Label>
+                        <input
+                          type="range"
+                          value={setup.suspension.rearDamping}
+                          onChange={(e) => this.updateSetupValue(["suspension", "rearDamping"], parseInt(e.target.value))}
+                          min={40}
+                          max={100}
+                          step={1}
+                          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-racing-blue"
+                          disabled={obdConnected}
+                        />
+                        <Label>Toe: {setup.suspension.rearToe}°</Label>
+                        <input
+                          type="range"
+                          value={setup.suspension.rearToe}
+                          onChange={(e) => this.updateSetupValue(["suspension", "rearToe"], parseFloat(e.target.value))}
+                          min={-1}
+                          max={1}
+                          step={0.01}
+                          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-racing-blue"
                           disabled={obdConnected}
                         />
                       </div>
                     </div>
                   </div>
-
-                  {/* Rear Tires */}
-                  <div className="space-y-4">
-                    <h4 className="font-medium text-racing-green">
-                      Rear Tires
-                    </h4>
-
-                    <div className="space-y-2">
-                      <Label>Tire Type</Label>
-                      <select
-                        value={setup.tires.rearType}
-                        onChange={(e) =>
-                          this.updateSetupValue(
-                            ["tires", "rearType"],
-                            e.target.value,
-                          )
-                        }
-                        className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
-                        disabled={obdConnected}
-                      >
-                        <option value="Racing Slicks">Racing Slicks</option>
-                        <option value="Semi-Slicks">Semi-Slicks</option>
-                        <option value="Street Tires">Street Tires</option>
-                        <option value="Wet Weather">Wet Weather</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Compound</Label>
-                      <select
-                        value={setup.tires.rearCompound}
-                        onChange={(e) =>
-                          this.updateSetupValue(
-                            ["tires", "rearCompound"],
-                            e.target.value,
-                          )
-                        }
-                        className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
-                        disabled={obdConnected}
-                      >
-                        <option value="Soft">Soft</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Hard">Hard</option>
-                      </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>
-                          Left Pressure: {setup.tires.rearLeftPressure} bar
-                        </Label>
-                        <input
-                          type="range"
-                          value={setup.tires.rearLeftPressure}
-                          onChange={(e) =>
-                            this.updateSetupValue(
-                              ["tires", "rearLeftPressure"],
-                              parseFloat(e.target.value),
-                            )
-                          }
-                          min={1.5}
-                          max={3.0}
-                          step={0.1}
-                          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                          disabled={obdConnected}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>
-                          Right Pressure: {setup.tires.rearRightPressure} bar
-                        </Label>
-                        <input
-                          type="range"
-                          value={setup.tires.rearRightPressure}
-                          onChange={(e) =>
-                            this.updateSetupValue(
-                              ["tires", "rearRightPressure"],
-                              parseFloat(e.target.value),
-                            )
-                          }
-                          min={1.5}
-                          max={3.0}
-                          step={0.1}
-                          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                          disabled={obdConnected}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {activeTab === "engine" && (
-              <Card className="p-6 bg-card/80 backdrop-blur-sm border-border/50">
-                <h3 className="text-xl font-semibold text-racing-red mb-6">
-                  Engine Configuration
-                </h3>
-
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    <h4 className="font-medium text-racing-red">
-                      Engine Type
-                    </h4>
-                    <select
-                      value={setup.engine.type}
-                      onChange={(e) =>
-                        this.updateSetupValue(
-                          ["engine", "type"],
-                          e.target.value,
-                        )
-                      }
-                      className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
-                      disabled={obdConnected}
-                    >
-                      <option value="V8 Naturally Aspirated">
-                        V8 Naturally Aspirated
-                      </option>
-                      <option value="V8 Turbo">V8 Turbo</option>
-                      <option value="V6 Turbo">V6 Turbo</option>
-                      <option value="V10 Naturally Aspirated">
-                        V10 Naturally Aspirated
-                      </option>
-                      <option value="V12 Naturally Aspirated">
-                        V12 Naturally Aspirated
-                      </option>
-                    </select>
-                  </div>
+                </>
+              )}
+              {activeTab === "tires" && (
+                <Card className="p-6 bg-card/80 backdrop-blur-sm border-border/50">
+                  <h3 className="text-xl font-semibold text-racing-green mb-6">
+                    Tire Configuration
+                  </h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label>Max Power: {setup.engine.maxPower} HP</Label>
-                      <input
-                        type="range"
-                        value={setup.engine.maxPower}
-                        onChange={(e) =>
-                          this.updateSetupValue(
-                            ["engine", "maxPower"],
-                            parseInt(e.target.value),
-                          )
-                        }
-                        min={200}
-                        max={800}
-                        step={5}
-                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                        disabled={obdConnected}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Max Torque: {setup.engine.maxTorque} Nm</Label>
-                      <input
-                        type="range"
-                        value={setup.engine.maxTorque}
-                        onChange={(e) =>
-                          this.updateSetupValue(
-                            ["engine", "maxTorque"],
-                            parseInt(e.target.value),
-                          )
-                        }
-                        min={300}
-                        max={900}
-                        step={5}
-                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                        disabled={obdConnected}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            )}
+                    {/* Front Tires */}
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-racing-green">
+                        Front Tires
+                      </h4>
 
-            {activeTab === "gearbox" && (
-              <Card className="p-6 bg-card/80 backdrop-blur-sm border-border/50">
-                <h3 className="text-xl font-semibold text-racing-yellow mb-6">
-                  Gearbox Configuration
-                </h3>
-
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    <h4 className="font-medium text-racing-yellow">
-                      Gearbox Type
-                    </h4>
-                    <select
-                      value={setup.gearbox.type}
-                      onChange={(e) =>
-                        this.updateSetupValue(
-                          ["gearbox", "type"],
-                          e.target.value,
-                        )
-                      }
-                      className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
-                      disabled={obdConnected}
-                    >
-                      <option value="Sequential 6-Speed">
-                        Sequential 6-Speed
-                      </option>
-                      <option value="Manual 6-Speed">Manual 6-Speed</option>
-                      <option value="Dual-Clutch">Dual-Clutch</option>
-                      <option value="CVT">CVT</option>
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {[1, 2, 3, 4, 5, 6].map((gear) => (
-                      <div key={gear} className="space-y-2">
-                        <Label>
-                          Gear {gear}:{" "}
-                          {
-                            setup.gearbox[
-                              `gear${gear}` as keyof typeof setup.gearbox
-                            ]
-                          }
-                        </Label>
-                        <input
-                          type="range"
-                          value={
-                            setup.gearbox[
-                              `gear${gear}` as keyof typeof setup.gearbox
-                            ] as number
-                          }
+                      <div className="space-y-2">
+                        <Label>Tire Type</Label>
+                        <select
+                          value={setup.tires.frontType}
                           onChange={(e) =>
                             this.updateSetupValue(
-                              ["gearbox", `gear${gear}`],
-                              parseFloat(e.target.value),
+                              ["tires", "frontType"],
+                              e.target.value,
                             )
                           }
-                          min={0.5}
-                          max={5}
-                          step={0.01}
+                          className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
+                          disabled={obdConnected}
+                        >
+                          <option value="Racing Slicks">Racing Slicks</option>
+                          <option value="Semi-Slicks">Semi-Slicks</option>
+                          <option value="Street Tires">Street Tires</option>
+                          <option value="Wet Weather">Wet Weather</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Compound</Label>
+                        <select
+                          value={setup.tires.frontCompound}
+                          onChange={(e) =>
+                            this.updateSetupValue(
+                              ["tires", "frontCompound"],
+                              e.target.value,
+                            )
+                          }
+                          className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
+                          disabled={obdConnected}
+                        >
+                          <option value="Soft">Soft</option>
+                          <option value="Medium">Medium</option>
+                          <option value="Hard">Hard</option>
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>
+                            Left Pressure: {setup.tires.frontLeftPressure} bar
+                          </Label>
+                          <input
+                            type="range"
+                            value={setup.tires.frontLeftPressure}
+                            onChange={(e) =>
+                              this.updateSetupValue(
+                                ["tires", "frontLeftPressure"],
+                                parseFloat(e.target.value),
+                              )
+                            }
+                            min={1.5}
+                            max={3.0}
+                            step={0.1}
+                            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                            disabled={obdConnected}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>
+                            Right Pressure: {setup.tires.frontRightPressure} bar
+                          </Label>
+                          <input
+                            type="range"
+                            value={setup.tires.frontRightPressure}
+                            onChange={(e) =>
+                              this.updateSetupValue(
+                                ["tires", "frontRightPressure"],
+                                parseFloat(e.target.value),
+                              )
+                            }
+                            min={1.5}
+                            max={3.0}
+                            step={0.1}
+                            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                            disabled={obdConnected}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Rear Tires */}
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-racing-green">
+                        Rear Tires
+                      </h4>
+
+                      <div className="space-y-2">
+                        <Label>Tire Type</Label>
+                        <select
+                          value={setup.tires.rearType}
+                          onChange={(e) =>
+                            this.updateSetupValue(
+                              ["tires", "rearType"],
+                              e.target.value,
+                            )
+                          }
+                          className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
+                          disabled={obdConnected}
+                        >
+                          <option value="Racing Slicks">Racing Slicks</option>
+                          <option value="Semi-Slicks">Semi-Slicks</option>
+                          <option value="Street Tires">Street Tires</option>
+                          <option value="Wet Weather">Wet Weather</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Compound</Label>
+                        <select
+                          value={setup.tires.rearCompound}
+                          onChange={(e) =>
+                            this.updateSetupValue(
+                              ["tires", "rearCompound"],
+                              e.target.value,
+                            )
+                          }
+                          className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
+                          disabled={obdConnected}
+                        >
+                          <option value="Soft">Soft</option>
+                          <option value="Medium">Medium</option>
+                          <option value="Hard">Hard</option>
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>
+                            Left Pressure: {setup.tires.rearLeftPressure} bar
+                          </Label>
+                          <input
+                            type="range"
+                            value={setup.tires.rearLeftPressure}
+                            onChange={(e) =>
+                              this.updateSetupValue(
+                                ["tires", "rearLeftPressure"],
+                                parseFloat(e.target.value),
+                              )
+                            }
+                            min={1.5}
+                            max={3.0}
+                            step={0.1}
+                            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                            disabled={obdConnected}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>
+                            Right Pressure: {setup.tires.rearRightPressure} bar
+                          </Label>
+                          <input
+                            type="range"
+                            value={setup.tires.rearRightPressure}
+                            onChange={(e) =>
+                              this.updateSetupValue(
+                                ["tires", "rearRightPressure"],
+                                parseFloat(e.target.value),
+                              )
+                            }
+                            min={1.5}
+                            max={3.0}
+                            step={0.1}
+                            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                            disabled={obdConnected}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              )}
+              {activeTab === "engine" && (
+                <Card className="p-6 bg-card/80 backdrop-blur-sm border-border/50">
+                  <h3 className="text-xl font-semibold text-racing-red mb-6">
+                    Engine Configuration
+                  </h3>
+
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-racing-red">
+                        Engine Type
+                      </h4>
+                      <select
+                        value={setup.engine.type}
+                        onChange={(e) =>
+                          this.updateSetupValue(
+                            ["engine", "type"],
+                            e.target.value,
+                          )
+                        }
+                        className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
+                        disabled={obdConnected}
+                      >
+                        <option value="V8 Naturally Aspirated">
+                          V8 Naturally Aspirated
+                        </option>
+                        <option value="V8 Turbo">V8 Turbo</option>
+                        <option value="V6 Turbo">V6 Turbo</option>
+                        <option value="V10 Naturally Aspirated">
+                          V10 Naturally Aspirated
+                        </option>
+                        <option value="V12 Naturally Aspirated">
+                          V12 Naturally Aspirated
+                        </option>
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label>Max Power: {setup.engine.maxPower} HP</Label>
+                        <input
+                          type="range"
+                          value={setup.engine.maxPower}
+                          onChange={(e) =>
+                            this.updateSetupValue(
+                              ["engine", "maxPower"],
+                              parseInt(e.target.value),
+                            )
+                          }
+                          min={200}
+                          max={800}
+                          step={5}
                           className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
                           disabled={obdConnected}
                         />
                       </div>
-                    ))}
+                      <div className="space-y-2">
+                        <Label>Max Torque: {setup.engine.maxTorque} Nm</Label>
+                        <input
+                          type="range"
+                          value={setup.engine.maxTorque}
+                          onChange={(e) =>
+                            this.updateSetupValue(
+                              ["engine", "maxTorque"],
+                              parseInt(e.target.value),
+                            )
+                          }
+                          min={300}
+                          max={900}
+                          step={5}
+                          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                          disabled={obdConnected}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            )}
+                </Card>
+              )}
+              {activeTab === "gearbox" && (
+                <Card className="p-6 bg-card/80 backdrop-blur-sm border-border/50">
+                  <h3 className="text-xl font-semibold text-racing-yellow mb-6">
+                    Gearbox Configuration
+                  </h3>
+
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-racing-yellow">
+                        Gearbox Type
+                      </h4>
+                      <select
+                        value={setup.gearbox.type}
+                        onChange={(e) =>
+                          this.updateSetupValue(
+                            ["gearbox", "type"],
+                            e.target.value,
+                          )
+                        }
+                        className="w-full px-3 py-2 bg-background/50 border border-border/50 rounded-md text-white"
+                        disabled={obdConnected}
+                      >
+                        <option value="Sequential 6-Speed">
+                          Sequential 6-Speed
+                        </option>
+                        <option value="Manual 6-Speed">Manual 6-Speed</option>
+                        <option value="Dual-Clutch">Dual-Clutch</option>
+                        <option value="CVT">CVT</option>
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {[1, 2, 3, 4, 5, 6].map((gear) => (
+                        <div key={gear} className="space-y-2">
+                          <Label>
+                            Gear {gear}:{" "}
+                            {
+                              setup.gearbox[
+                                `gear${gear}` as keyof typeof setup.gearbox
+                              ]
+                            }
+                          </Label>
+                          <input
+                            type="range"
+                            value={
+                              setup.gearbox[
+                                `gear${gear}` as keyof typeof setup.gearbox
+                              ] as number
+                            }
+                            onChange={(e) =>
+                              this.updateSetupValue(
+                                ["gearbox", `gear${gear}`],
+                                parseFloat(e.target.value),
+                              )
+                            }
+                            min={0.5}
+                            max={5}
+                            step={0.01}
+                            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                            disabled={obdConnected}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </div>
           </div>
         </div>
       </div>
