@@ -83,17 +83,46 @@ class DataManagementService {
 
   // Session Management
   getAllSessions(): SessionData[] {
-    return Array.from(this.sessions.values()).sort(
+    const sessions = Array.from(this.sessions.values()).sort(
       (a, b) => b.date.getTime() - a.date.getTime(),
     );
+    
+    console.log(`=== Getting all sessions ===`);
+    console.log(`Total sessions in Map: ${this.sessions.size}`);
+    console.log(`Returning ${sessions.length} sessions`);
+    
+    sessions.forEach((session, index) => {
+      console.log(`Session ${index + 1}: ${session.name} (ID: ${session.id})`);
+      console.log(`  - Telemetry data length: ${session.telemetryData?.length || 0}`);
+      console.log(`  - Has telemetry data: ${!!session.telemetryData}`);
+      console.log(`  - Session object keys:`, Object.keys(session));
+    });
+    
+    return sessions;
   }
 
   getSession(sessionId: string): SessionData | null {
+    console.log(`=== Getting session: ${sessionId} ===`);
     const session = this.sessions.get(sessionId);
     if (session) {
-      console.log(`Retrieved session: ${session.name} with ${session.telemetryData?.length || 0} telemetry points`);
+      console.log(`✓ Retrieved session: ${session.name}`);
+      console.log(`Session ID: ${session.id}`);
+      console.log(`Telemetry data length: ${session.telemetryData?.length || 0}`);
+      console.log(`Has telemetry data: ${!!session.telemetryData}`);
+      console.log(`Session object keys:`, Object.keys(session));
+      
+      if (session.telemetryData && session.telemetryData.length > 0) {
+        console.log(`First telemetry point:`, {
+          timestamp: session.telemetryData[0].timestamp,
+          position: session.telemetryData[0].position,
+          speed: session.telemetryData[0].speed
+        });
+      } else {
+        console.warn(`⚠️ Session has no telemetry data!`);
+      }
     } else {
-      console.log(`Session not found: ${sessionId}`);
+      console.log(`✗ Session not found: ${sessionId}`);
+      console.log(`Available session IDs:`, Array.from(this.sessions.keys()));
     }
     return session || null;
   }
@@ -105,10 +134,33 @@ class DataManagementService {
       id,
     };
 
-    console.log(`Adding session: ${newSession.name} with ${newSession.telemetryData?.length || 0} telemetry points`);
+    console.log(`=== Adding session: ${newSession.name} ===`);
+    console.log(`Session ID: ${id}`);
+    console.log(`Telemetry data length: ${newSession.telemetryData?.length || 0}`);
+    console.log(`Has telemetry data: ${!!newSession.telemetryData}`);
+    console.log(`Session object keys:`, Object.keys(newSession));
+    
+    if (newSession.telemetryData && newSession.telemetryData.length > 0) {
+      console.log(`First telemetry point:`, {
+        timestamp: newSession.telemetryData[0].timestamp,
+        position: newSession.telemetryData[0].position,
+        speed: newSession.telemetryData[0].speed
+      });
+    }
     
     this.sessions.set(id, newSession);
+    console.log(`Session added to Map. Map size: ${this.sessions.size}`);
+    
     this.saveSessions();
+    console.log(`Session saved to localStorage`);
+    
+    // Verify the session was saved correctly
+    const savedSession = this.getSession(id);
+    if (savedSession) {
+      console.log(`✓ Session verified after save: ${savedSession.name} with ${savedSession.telemetryData?.length || 0} telemetry points`);
+    } else {
+      console.error(`✗ Failed to retrieve session after save: ${id}`);
+    }
     
     console.log(`Session saved with ID: ${id}`);
     return id;
