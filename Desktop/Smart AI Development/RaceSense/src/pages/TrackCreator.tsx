@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader } from "@googlemaps/js-api-loader";
-import { Timer, Trash2, Plus, Globe, Save, ArrowLeft, Info } from "lucide-react";
+import { Timer, Trash2, Plus, Globe, Save, ArrowLeft, Info, Flag } from "lucide-react";
 import { useNotifications } from "@/components/RacingNotifications";
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyA5ondxplwoNnMztrYiYnr2Gs8Uwm-8MLk";
@@ -125,6 +125,58 @@ const TrackCreator: React.FC = () => {
 
   // Test function to add sector at map center
   const addSectorAtCenter = () => {
+    if (!mapInstanceRef.current) return;
+    const center = mapInstanceRef.current.getCenter();
+    if (center) {
+      const lat = center.lat();
+      const lng = center.lng();
+      const currentSectorsCount = sectorsCountRef.current;
+      const newPoint: SectorPoint = {
+        id: Date.now().toString(),
+        lat,
+        lng,
+        name: `Sector Point ${currentSectorsCount * 2 + 1}`,
+      };
+      const newSector = {
+        id: currentSectorsCount + 1,
+        name: `Sector ${currentSectorsCount + 1}`,
+        startPoint: newPoint,
+        endPoint: { ...newPoint, id: (Date.now() + 1).toString() },
+        length: 0,
+      };
+      setTrack(prev => ({ ...prev, sectors: [...prev.sectors, newSector] }));
+      notify({ type: "success", title: "Sector Added", message: `Added sector at center: ${lat.toFixed(6)}, ${lng.toFixed(6)}` });
+    }
+  };
+
+  // Add start/finish line at map center
+  const addStartFinishAtCenter = () => {
+    if (!mapInstanceRef.current) return;
+    const center = mapInstanceRef.current.getCenter();
+    if (center) {
+      const lat = center.lat();
+      const lng = center.lng();
+      const currentSectorsCount = sectorsCountRef.current;
+      const newPoint: SectorPoint = {
+        id: Date.now().toString(),
+        lat,
+        lng,
+        name: `Start/Finish Line`,
+      };
+      const newSector = {
+        id: currentSectorsCount + 1,
+        name: `Start/Finish Line`,
+        startPoint: newPoint,
+        endPoint: { ...newPoint, id: (Date.now() + 1).toString() },
+        length: 0,
+      };
+      setTrack(prev => ({ ...prev, sectors: [...prev.sectors, newSector] }));
+      notify({ type: "success", title: "Start/Finish Added", message: `Added start/finish line at center: ${lat.toFixed(6)}, ${lng.toFixed(6)}` });
+    }
+  };
+
+  // Add sector at map center
+  const addSectorAtMapCenter = () => {
     if (!mapInstanceRef.current) return;
     const center = mapInstanceRef.current.getCenter();
     if (center) {
@@ -356,13 +408,13 @@ const TrackCreator: React.FC = () => {
                       </div>
                       <div className="text-gray-300 text-sm">
                         {mapReady 
-                          ? "Click anywhere on the map to create your first sector"
+                          ? "Click anywhere on the map or use the 'Add Sector' button"
                           : "Please wait while the map loads..."
                         }
                       </div>
                       {mapReady && (
                         <div className="mt-3 text-xs text-green-400">
-                          ✓ Map ready - Click to add sectors
+                          ✓ Map ready - Click to add sectors or use Quick Actions
                         </div>
                       )}
                     </div>
@@ -373,6 +425,39 @@ const TrackCreator: React.FC = () => {
           </div>
           {/* Control Panel */}
           <div className="space-y-4 sm:space-y-6">
+            {/* Quick Action Buttons */}
+            <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700/50 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-3">
+                  <div className="p-2 bg-blue-500/20 rounded-lg">
+                    <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
+                  </div>
+                  <span className="text-sm sm:text-base">Quick Actions</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button
+                  onClick={addStartFinishAtCenter}
+                  className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg shadow-green-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                  disabled={!mapReady}
+                >
+                  <Flag className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  Add Start/Finish
+                </Button>
+                <Button
+                  onClick={addSectorAtMapCenter}
+                  className="w-full bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-700 hover:to-yellow-600 text-white shadow-lg shadow-yellow-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                  disabled={!mapReady}
+                >
+                  <Timer className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  Add Sector
+                </Button>
+                <div className="text-xs text-gray-400 text-center pt-2">
+                  These buttons add elements at the map center
+                </div>
+              </CardContent>
+            </Card>
+
             <Tabs defaultValue="sectors" className="w-full">
               <TabsList className="grid w-full grid-cols-1 bg-gradient-to-r from-gray-800 to-gray-900 border border-gray-700/50 p-1 rounded-lg">
                 <TabsTrigger value="sectors" className="text-white data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-400 rounded-md transition-all duration-200 text-xs sm:text-sm">
