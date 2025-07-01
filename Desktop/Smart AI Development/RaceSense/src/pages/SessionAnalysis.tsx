@@ -351,6 +351,27 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
     }
   };
 
+  createDebugSession = async () => {
+    try {
+      console.log("=== Creating debug session from SessionAnalysis ===");
+      
+      const sessionId = await realSessionAnalysisService.createDebugSession();
+      
+      // Wait a moment for localStorage operations to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log("Debug session created, reloading data...");
+      
+      // Reload data
+      await this.loadRealData();
+      
+      notify.success("Debug Session Created", `Debug session created with ID: ${sessionId}`);
+    } catch (error) {
+      console.error("Error creating debug session:", error);
+      notify.error("Debug Session Failed", `Failed to create debug session: ${error}`);
+    }
+  };
+
   handleNavigation = (path: string) => {
     if (typeof window !== "undefined") {
       window.history.pushState(null, "", path);
@@ -545,6 +566,14 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
                      >
                        <RefreshCw className="h-4 w-4 mr-2" />
                        Debug: Clear & Generate
+                     </RacingButton>
+                     <RacingButton
+                       onClick={this.createDebugSession}
+                       disabled={isAnalyzing}
+                       className="w-full bg-purple-600 hover:bg-purple-700"
+                     >
+                       <Database className="h-4 w-4 mr-2" />
+                       Create Debug Session
                      </RacingButton>
                      <RacingButton
                        onClick={this.exportAnalysisData}

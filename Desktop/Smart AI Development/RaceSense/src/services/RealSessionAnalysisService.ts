@@ -554,6 +554,76 @@ class RealSessionAnalysisService {
       throw new Error("Invalid analysis data format");
     }
   }
+
+  // Debug method to create a test session with telemetry data
+  async createDebugSession(): Promise<string> {
+    console.log("=== Creating debug session with telemetry data ===");
+    
+    // Generate some test telemetry data
+    const telemetryData: TelemetryPoint[] = [];
+    const startTime = Date.now() - 60000; // 1 minute ago
+    
+    for (let i = 0; i < 100; i++) {
+      const timestamp = startTime + (i * 100); // 100ms intervals
+      telemetryData.push({
+        timestamp,
+        position: {
+          lat: 52.0736 + (i * 0.0001), // Moving north
+          lng: -1.0169 + (i * 0.0001), // Moving east
+        },
+        speed: 100 + (Math.random() * 50), // 100-150 km/h
+        rpm: 3000 + (Math.random() * 2000),
+        throttle: 50 + (Math.random() * 50),
+        brake: Math.random() * 20,
+        gear: 3 + Math.floor(Math.random() * 3),
+        engineTemp: 85 + Math.random() * 15,
+        gForce: {
+          lateral: (Math.random() - 0.5) * 2,
+          longitudinal: (Math.random() - 0.5) * 1.5,
+          vertical: 1 + (Math.random() - 0.5) * 0.2,
+        },
+        tireTemps: {
+          frontLeft: 80 + Math.random() * 20,
+          frontRight: 80 + Math.random() * 20,
+          rearLeft: 75 + Math.random() * 20,
+          rearRight: 75 + Math.random() * 20,
+        },
+      });
+    }
+    
+    console.log(`Generated ${telemetryData.length} telemetry points`);
+    
+    // Create session
+    const session: Omit<SessionData, "id"> = {
+      name: "Debug Test Session",
+      track: "Silverstone GP",
+      type: "practice",
+      date: new Date(),
+      duration: 60, // 1 minute
+      bestLapTime: 60000, // 1 minute
+      totalLaps: 1,
+      notes: "Debug session with telemetry data",
+      telemetryData: telemetryData,
+      metadata: {
+        weather: "Clear",
+        temperature: 20,
+        trackCondition: "Dry",
+      },
+    };
+    
+    const sessionId = dataManagementService.addSession(session);
+    console.log(`Created debug session with ID: ${sessionId}`);
+    
+    // Verify the session was created correctly
+    const createdSession = dataManagementService.getSession(sessionId);
+    if (createdSession) {
+      console.log(`✓ Debug session verified: ${createdSession.name} with ${createdSession.telemetryData?.length || 0} telemetry points`);
+    } else {
+      console.error("✗ Failed to retrieve debug session");
+    }
+    
+    return sessionId;
+  }
 }
 
 export const realSessionAnalysisService = new RealSessionAnalysisService(); 
