@@ -372,6 +372,27 @@ class DataManagementService {
     return await dataExportService.restoreFromBackup(backupFile);
   }
 
+  // Force clear old sessions and reload with proper telemetry data
+  forceReloadWithTelemetry(): void {
+    console.log("=== Force reloading sessions with telemetry data ===");
+    
+    // Clear all sessions from memory
+    this.sessions.clear();
+    console.log("Cleared sessions from memory");
+    
+    // Clear localStorage
+    localStorage.removeItem("racesense-sessions");
+    console.log("Cleared racesense-sessions from localStorage");
+    
+    // Clear sample data flag to allow demo data loading
+    localStorage.removeItem("racesense-has-sample-data");
+    console.log("Cleared sample data flag");
+    
+    // Reload sessions (this will load demo data with telemetry)
+    this.loadSessions();
+    console.log("Reloaded sessions with telemetry data");
+  }
+
   // Storage management
   private loadSessions(): void {
     try {
@@ -390,6 +411,13 @@ class DataManagementService {
             if (data.syncStatus?.lastSync) {
               data.syncStatus.lastSync = new Date(data.syncStatus.lastSync);
             }
+            
+            // Check if session has telemetry data
+            if (!data.telemetryData || data.telemetryData.length === 0) {
+              console.log(`⚠️ Session ${data.name} has no telemetry data, skipping...`);
+              return; // Skip sessions without telemetry data
+            }
+            
             this.sessions.set(id, data);
             loadedCount++;
             
@@ -400,6 +428,12 @@ class DataManagementService {
         });
         
         console.log(`Successfully loaded ${loadedCount} sessions from localStorage`);
+        
+        // If no valid sessions were loaded, load demo data
+        if (loadedCount === 0) {
+          console.log("No valid sessions found, loading demo data with telemetry...");
+          this.loadDemoData();
+        }
       } else if (hasSampleData) {
         console.log("Sample data flag found but no sessions in localStorage - this indicates an issue");
         console.log("Not loading demo data to avoid conflicts");

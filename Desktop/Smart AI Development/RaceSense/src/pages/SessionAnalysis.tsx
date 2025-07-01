@@ -351,6 +351,28 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
     }
   };
 
+  forceReloadWithTelemetry = async () => {
+    try {
+      console.log("=== Force reloading with telemetry data ===");
+      
+      // Force reload sessions with telemetry data
+      dataManagementService.forceReloadWithTelemetry();
+      
+      // Wait a moment for the reload to complete
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      console.log("Force reload complete, refreshing data...");
+      
+      // Reload data
+      await this.loadRealData();
+      
+      notify.success("Force Reload Complete", "Sessions reloaded with telemetry data");
+    } catch (error) {
+      console.error("Force reload error:", error);
+      notify.error("Force Reload Failed", `Force reload operation failed: ${error}`);
+    }
+  };
+
   createDebugSession = async () => {
     try {
       console.log("=== Creating debug session from SessionAnalysis ===");
@@ -566,6 +588,14 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
                      >
                        <RefreshCw className="h-4 w-4 mr-2" />
                        Debug: Clear & Generate
+                     </RacingButton>
+                     <RacingButton
+                       onClick={this.forceReloadWithTelemetry}
+                       disabled={isAnalyzing}
+                       className="w-full bg-orange-600 hover:bg-orange-700"
+                     >
+                       <RefreshCw className="h-4 w-4 mr-2" />
+                       Force Reload with Telemetry
                      </RacingButton>
                      <RacingButton
                        onClick={this.createDebugSession}
