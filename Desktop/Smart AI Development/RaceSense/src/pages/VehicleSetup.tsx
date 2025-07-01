@@ -452,9 +452,6 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & {
                   <RacingButton size="sm" variant="outline" title="Copy Profile" onClick={this.copyProfile}>
                     <Copy className="h-4 w-4" />
                   </RacingButton>
-                  <RacingButton size="sm" variant="outline" title="Delete Profile" onClick={this.deleteProfile}>
-                    <Trash2 className="h-4 w-4" />
-                  </RacingButton>
                 </div>
               </div>
             </div>
