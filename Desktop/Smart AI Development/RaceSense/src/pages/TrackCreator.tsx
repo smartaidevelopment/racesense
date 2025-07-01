@@ -312,50 +312,132 @@ const TrackCreator: React.FC = () => {
     sectorMarkersRef.current.forEach(m => m.setMap(null));
     const newSectorMarkers: any[] = [];
     track.sectors.forEach((sector, idx) => {
-      // Start marker
-      // @ts-ignore
-      const startMarker = new window.google.maps.Marker({
-        position: { lat: sector.startPoint.lat, lng: sector.startPoint.lng },
-        map: showSectors ? mapInstanceRef.current! : null,
-        label: `S${idx + 1}S`,
-        title: `Sector ${idx + 1} Start`,
-        draggable: dragMode === "sectors",
-        icon: {
-          // @ts-ignore
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 6,
-          fillColor: "#f59e0b",
-          fillOpacity: 0.8,
-          strokeColor: "#ffffff",
-          strokeWeight: 2,
-        },
-      });
-      // End marker
-      // @ts-ignore
-      const endMarker = new window.google.maps.Marker({
-        position: { lat: sector.endPoint.lat, lng: sector.endPoint.lng },
-        map: showSectors ? mapInstanceRef.current! : null,
-        label: `S${idx + 1}E`,
-        title: `Sector ${idx + 1} End`,
-        draggable: dragMode === "sectors",
-        icon: {
-          // @ts-ignore
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 6,
-          fillColor: "#f59e0b",
-          fillOpacity: 0.8,
-          strokeColor: "#ffffff",
-          strokeWeight: 2,
-        },
-      });
-      // Drag listeners
-      startMarker.addListener("dragend", (e: any) => {
-        if (e.latLng) updateSectorPosition(sector.id, "start", e.latLng.lat(), e.latLng.lng());
-      });
-      endMarker.addListener("dragend", (e: any) => {
-        if (e.latLng) updateSectorPosition(sector.id, "end", e.latLng.lat(), e.latLng.lng());
-      });
-      newSectorMarkers.push(startMarker, endMarker);
+      const isStartFinish = sector.name.toLowerCase().includes('start/finish') || sector.name.toLowerCase().includes('start finish');
+      
+      if (isStartFinish) {
+        // Create a single line for start/finish
+        // @ts-ignore
+        const startFinishLine = new window.google.maps.Polyline({
+          path: [
+            { lat: sector.startPoint.lat, lng: sector.startPoint.lng },
+            { lat: sector.endPoint.lat, lng: sector.endPoint.lng }
+          ],
+          geodesic: true,
+          strokeColor: "#FF0000", // Red for start/finish
+          strokeOpacity: 1.0,
+          strokeWeight: 4,
+          map: showSectors ? mapInstanceRef.current! : null,
+        });
+        
+        // Add start marker (smaller, at start point)
+        // @ts-ignore
+        const startMarker = new window.google.maps.Marker({
+          position: { lat: sector.startPoint.lat, lng: sector.startPoint.lng },
+          map: showSectors ? mapInstanceRef.current! : null,
+          label: "S",
+          title: "Start/Finish Line Start",
+          draggable: dragMode === "sectors",
+          icon: {
+            // @ts-ignore
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 4,
+            fillColor: "#FF0000",
+            fillOpacity: 0.8,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+        });
+        
+        // Add finish marker (smaller, at end point)
+        // @ts-ignore
+        const finishMarker = new window.google.maps.Marker({
+          position: { lat: sector.endPoint.lat, lng: sector.endPoint.lng },
+          map: showSectors ? mapInstanceRef.current! : null,
+          label: "F",
+          title: "Start/Finish Line Finish",
+          draggable: dragMode === "sectors",
+          icon: {
+            // @ts-ignore
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 4,
+            fillColor: "#FF0000",
+            fillOpacity: 0.8,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+        });
+        
+        // Drag listeners for start/finish
+        startMarker.addListener("dragend", (e: any) => {
+          if (e.latLng) {
+            updateSectorPosition(sector.id, "start", e.latLng.lat(), e.latLng.lng());
+            // Update the line path
+            startFinishLine.setPath([
+              { lat: e.latLng.lat(), lng: e.latLng.lng() },
+              { lat: sector.endPoint.lat, lng: sector.endPoint.lng }
+            ]);
+          }
+        });
+        
+        finishMarker.addListener("dragend", (e: any) => {
+          if (e.latLng) {
+            updateSectorPosition(sector.id, "end", e.latLng.lat(), e.latLng.lng());
+            // Update the line path
+            startFinishLine.setPath([
+              { lat: sector.startPoint.lat, lng: sector.startPoint.lng },
+              { lat: e.latLng.lat(), lng: e.latLng.lng() }
+            ]);
+          }
+        });
+        
+        newSectorMarkers.push(startFinishLine, startMarker, finishMarker);
+      } else {
+        // Regular sector markers (existing code)
+        // Start marker
+        // @ts-ignore
+        const startMarker = new window.google.maps.Marker({
+          position: { lat: sector.startPoint.lat, lng: sector.startPoint.lng },
+          map: showSectors ? mapInstanceRef.current! : null,
+          label: `S${idx + 1}S`,
+          title: `Sector ${idx + 1} Start`,
+          draggable: dragMode === "sectors",
+          icon: {
+            // @ts-ignore
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 6,
+            fillColor: "#f59e0b",
+            fillOpacity: 0.8,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+        });
+        // End marker
+        // @ts-ignore
+        const endMarker = new window.google.maps.Marker({
+          position: { lat: sector.endPoint.lat, lng: sector.endPoint.lng },
+          map: showSectors ? mapInstanceRef.current! : null,
+          label: `S${idx + 1}E`,
+          title: `Sector ${idx + 1} End`,
+          draggable: dragMode === "sectors",
+          icon: {
+            // @ts-ignore
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 6,
+            fillColor: "#f59e0b",
+            fillOpacity: 0.8,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+        });
+        // Drag listeners
+        startMarker.addListener("dragend", (e: any) => {
+          if (e.latLng) updateSectorPosition(sector.id, "start", e.latLng.lat(), e.latLng.lng());
+        });
+        endMarker.addListener("dragend", (e: any) => {
+          if (e.latLng) updateSectorPosition(sector.id, "end", e.latLng.lat(), e.latLng.lng());
+        });
+        newSectorMarkers.push(startMarker, endMarker);
+      }
     });
     sectorMarkersRef.current = newSectorMarkers;
   }, [track.sectors, dragMode, showSectors]);
@@ -383,6 +465,22 @@ const TrackCreator: React.FC = () => {
         return sector;
       })
     }));
+
+    // Update the start/finish line if this is a start/finish sector
+    const sector = track.sectors.find(s => s.id === sectorId);
+    if (sector && (sector.name.toLowerCase().includes('start/finish') || sector.name.toLowerCase().includes('start finish'))) {
+      // Find the polyline in the markers array and update it
+      const polylineIndex = sectorMarkersRef.current.findIndex(marker => 
+        // @ts-ignore
+        marker instanceof window.google.maps.Polyline
+      );
+      if (polylineIndex !== -1) {
+        const polyline = sectorMarkersRef.current[polylineIndex];
+        const newStartPoint = position === "start" ? { lat, lng } : sector.startPoint;
+        const newEndPoint = position === "end" ? { lat, lng } : sector.endPoint;
+        polyline.setPath([newStartPoint, newEndPoint]);
+      }
+    }
   };
 
   // Calculate distance between two points
@@ -609,39 +707,59 @@ const TrackCreator: React.FC = () => {
                       </div>
                     ) : (
                       <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
-                        {track.sectors.map((sector) => (
-                          <div key={sector.id} className="p-2 sm:p-3 bg-gray-700/30 rounded-lg border border-gray-600/50 hover:bg-gray-700/50 transition-all duration-200">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-white text-xs sm:text-sm">{sector.name}</span>
+                        {track.sectors.map((sector) => {
+                          const isStartFinish = sector.name.toLowerCase().includes('start/finish') || sector.name.toLowerCase().includes('start finish');
+                          return (
+                            <div key={sector.id} className={`p-2 sm:p-3 rounded-lg border transition-all duration-200 ${
+                              isStartFinish 
+                                ? 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20' 
+                                : 'bg-gray-700/30 border-gray-600/50 hover:bg-gray-700/50'
+                            }`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className={`font-medium text-xs sm:text-sm ${
+                                    isStartFinish ? 'text-red-400' : 'text-white'
+                                  }`}>
+                                    {sector.name}
+                                  </span>
+                                  {isStartFinish && (
+                                    <Flag className="h-3 w-3 text-red-400" />
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => removeSector(sector.id)}
+                                    className="text-red-400 border-red-400/50 hover:bg-red-400/10 transition-all duration-200 p-1 sm:p-2"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => removeSector(sector.id)}
-                                  className="text-red-400 border-red-400/50 hover:bg-red-400/10 transition-all duration-200 p-1 sm:p-2"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
+                              <div className="text-xs text-gray-400 space-y-1">
+                                <div className="flex items-center gap-1">
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    isStartFinish ? 'bg-red-500' : 'bg-green-500'
+                                  }`} />
+                                  <span>From: <span className="text-white">{sector.startPoint.name}</span></span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    isStartFinish ? 'bg-red-500' : 'bg-red-500'
+                                  }`} />
+                                  <span>To: <span className="text-white">{sector.endPoint.name}</span></span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    isStartFinish ? 'bg-red-500' : 'bg-yellow-500'
+                                  }`} />
+                                  <span>Length: <span className="text-white">{(sector.length / 1000).toFixed(2)} km</span></span>
+                                </div>
                               </div>
                             </div>
-                            <div className="text-xs text-gray-400 space-y-1">
-                              <div className="flex items-center gap-1">
-                                <div className="w-2 h-2 bg-green-500 rounded-full" />
-                                <span>From: <span className="text-white">{sector.startPoint.name}</span></span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <div className="w-2 h-2 bg-red-500 rounded-full" />
-                                <span>To: <span className="text-white">{sector.endPoint.name}</span></span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <div className="w-2 h-2 bg-yellow-500 rounded-full" />
-                                <span>Length: <span className="text-white">{(sector.length / 1000).toFixed(2)} km</span></span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </CardContent>
