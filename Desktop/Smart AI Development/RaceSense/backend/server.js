@@ -318,6 +318,31 @@ app.post('/api/racebox/disconnect', async (req, res) => {
   }
 });
 
+// --- AI/ML Endpoints Scaffold ---
+app.post('/api/ai/optimize-track', (req, res) => {
+  res.json({ status: 'ok', input: req.body, message: 'Track optimization endpoint hit (scaffold).' });
+});
+
+app.post('/api/ai/predict-setup', (req, res) => {
+  res.json({ status: 'ok', input: req.body, message: 'Setup prediction endpoint hit (scaffold).' });
+});
+
+app.post('/api/ai/computer-vision', (req, res) => {
+  res.json({ status: 'ok', input: req.body, message: 'Computer vision analysis endpoint hit (scaffold).' });
+});
+
+app.post('/api/ai/real-time-strategy', (req, res) => {
+  res.json({ status: 'ok', input: req.body, message: 'Real-time strategy endpoint hit (scaffold).' });
+});
+
+app.post('/api/ai/performance-prediction', (req, res) => {
+  res.json({ status: 'ok', input: req.body, message: 'Performance prediction endpoint hit (scaffold).' });
+});
+
+app.post('/api/ai/coaching-recommendations', (req, res) => {
+  res.json({ status: 'ok', input: req.body, message: 'Coaching recommendations endpoint hit (scaffold).' });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
