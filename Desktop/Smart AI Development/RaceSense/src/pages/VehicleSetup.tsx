@@ -64,14 +64,33 @@ interface VehicleSetupState {
   setup: VehicleSetup;
 }
 
-class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD: LiveOBDData | null, obdConnected: boolean, obdError: string | null, connecting: boolean, saveConfirmation?: boolean }> {
-  private savedProfiles = [
-    "Default Setup",
-    "Silverstone Qualifying",
-    "Nürburgring Race",
-    "Suzuka Wet Weather",
-    "Monza High Speed",
-  ];
+// Utility functions for localStorage
+const PROFILE_STORAGE_KEY = 'vehicleSetupProfiles';
+function loadProfilesFromStorage() {
+  try {
+    const data = localStorage.getItem(PROFILE_STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+function saveProfilesToStorage(profiles) {
+  localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profiles));
+}
+
+class VehicleSetupPage extends React.Component<{}, VehicleSetupState & {
+  liveOBD: LiveOBDData | null,
+  obdConnected: boolean,
+  obdError: string | null,
+  connecting: boolean,
+  saveConfirmation?: boolean,
+  deleteConfirmation?: boolean,
+  copyConfirmation?: boolean,
+  errorMessage?: string,
+  profileNameInput?: string,
+}> {
+  private savedProfiles: string[] = [];
+  private profileData: { [name: string]: VehicleSetup } = {};
 
   private unsubscribeOBD?: () => void;
   private unsubscribeOBDConn?: () => void;
@@ -79,55 +98,38 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
 
   constructor(props: {}) {
     super(props);
+    // Load profiles from localStorage or use defaults
+    const storedProfiles = loadProfilesFromStorage();
+    if (storedProfiles.length > 0) {
+      this.savedProfiles = storedProfiles.map((p: any) => p.name);
+      this.profileData = Object.fromEntries(storedProfiles.map((p: any) => [p.name, p]));
+    } else {
+      // Default profiles
+      this.savedProfiles = [
+        "Default Setup",
+        "Silverstone Qualifying",
+        "Nürburgring Race",
+        "Suzuka Wet Weather",
+        "Monza High Speed",
+      ];
+      this.savedProfiles.forEach(name => {
+        this.profileData[name] = this.getDefaultSetup(name);
+      });
+      saveProfilesToStorage(this.savedProfiles.map(name => this.profileData[name]));
+    }
     this.state = {
-      currentProfile: "Default Setup",
+      currentProfile: this.savedProfiles[0],
       activeTab: "suspension",
-      setup: {
-        name: "Default Setup",
-        suspension: {
-          frontSpringRate: 8.5,
-          rearSpringRate: 9.2,
-          frontDamping: 65,
-          rearDamping: 70,
-          frontToe: 0.2,
-          rearToe: -0.1,
-          ackerman: 15,
-          trackWidth: 1850,
-        },
-        tires: {
-          frontType: "Racing Slicks",
-          rearType: "Racing Slicks",
-          frontLeftPressure: 2.1,
-          frontRightPressure: 2.1,
-          rearLeftPressure: 2.0,
-          rearRightPressure: 2.0,
-          frontCompound: "Medium",
-          rearCompound: "Medium",
-        },
-        engine: {
-          type: "V8 Naturally Aspirated",
-          maxPower: 485,
-          maxTorque: 520,
-          peakRpm: 7200,
-          redline: 8500,
-        },
-        gearbox: {
-          type: "Sequential 6-Speed",
-          gear1: 3.45,
-          gear2: 2.18,
-          gear3: 1.64,
-          gear4: 1.28,
-          gear5: 1.05,
-          gear6: 0.89,
-          finalDrive: 3.73,
-          differential: 15,
-        },
-      },
+      setup: { ...this.profileData[this.savedProfiles[0]] },
       liveOBD: null,
       obdConnected: obdIntegrationService.isDeviceConnected(),
       obdError: null,
       connecting: false,
       saveConfirmation: false,
+      deleteConfirmation: false,
+      copyConfirmation: false,
+      errorMessage: '',
+      profileNameInput: '',
     };
   }
 
@@ -175,7 +177,15 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
   };
 
   private handleProfileChange = (profile: string) => {
-    this.setState({ currentProfile: profile });
+    this.setState({
+      currentProfile: profile,
+      setup: { ...this.profileData[profile] },
+      errorMessage: '',
+    });
+  };
+
+  private handleProfileNameInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    this.setState({ profileNameInput: e.target.value, errorMessage: '' });
   };
 
   private handleTabChange = (tab: string) => {
@@ -197,26 +207,71 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
   };
 
   private saveSetup = () => {
-    const { setup, currentProfile } = this.state;
-    // Save the current setup as a new profile if not already present
-    if (!this.savedProfiles.includes(setup.name)) {
-      this.savedProfiles.push(setup.name);
+    const { setup, profileNameInput } = this.state;
+    let name = profileNameInput?.trim() || setup.name.trim();
+    if (!name) {
+      this.setState({ errorMessage: 'Profile name cannot be empty.' });
+      return;
     }
+    if (this.savedProfiles.includes(name) && name !== this.state.currentProfile) {
+      this.setState({ errorMessage: 'Profile name already exists.' });
+      return;
+    }
+    const newSetup = { ...setup, name };
+    this.profileData[name] = newSetup;
+    if (!this.savedProfiles.includes(name)) {
+      this.savedProfiles.push(name);
+    }
+    saveProfilesToStorage(this.savedProfiles.map(n => this.profileData[n]));
     this.setState({
-      currentProfile: setup.name,
+      currentProfile: name,
+      setup: { ...newSetup },
       saveConfirmation: true,
+      errorMessage: '',
+      profileNameInput: '',
     });
     setTimeout(() => this.setState({ saveConfirmation: false }), 2000);
   };
 
-  private resetSetup = () => {
+  private deleteProfile = () => {
+    const { currentProfile } = this.state;
+    if (this.savedProfiles.length <= 1) {
+      this.setState({ errorMessage: 'At least one profile must remain.' });
+      return;
+    }
+    this.savedProfiles = this.savedProfiles.filter(n => n !== currentProfile);
+    delete this.profileData[currentProfile];
+    saveProfilesToStorage(this.savedProfiles.map(n => this.profileData[n]));
+    const newProfile = this.savedProfiles[0];
     this.setState({
-      currentProfile: "Default Setup",
-      setup: {
-        ...this.state.setup,
-        name: "Default Setup",
-      },
+      currentProfile: newProfile,
+      setup: { ...this.profileData[newProfile] },
+      deleteConfirmation: true,
+      errorMessage: '',
     });
+    setTimeout(() => this.setState({ deleteConfirmation: false }), 2000);
+  };
+
+  private copyProfile = () => {
+    const { setup } = this.state;
+    let baseName = setup.name + ' (Copy)';
+    let name = baseName;
+    let i = 2;
+    while (this.savedProfiles.includes(name)) {
+      name = baseName + ' ' + i;
+      i++;
+    }
+    const newSetup = { ...setup, name };
+    this.profileData[name] = newSetup;
+    this.savedProfiles.push(name);
+    saveProfilesToStorage(this.savedProfiles.map(n => this.profileData[n]));
+    this.setState({
+      currentProfile: name,
+      setup: { ...newSetup },
+      copyConfirmation: true,
+      errorMessage: '',
+    });
+    setTimeout(() => this.setState({ copyConfirmation: false }), 2000);
   };
 
   handleOBDConnect = async () => {
@@ -240,6 +295,50 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
       this.setState({ connecting: false });
     }
   };
+
+  private getDefaultSetup(name: string): VehicleSetup {
+    return {
+      name,
+      suspension: {
+        frontSpringRate: 8.5,
+        rearSpringRate: 9.2,
+        frontDamping: 65,
+        rearDamping: 70,
+        frontToe: 0.2,
+        rearToe: -0.1,
+        ackerman: 15,
+        trackWidth: 1850,
+      },
+      tires: {
+        frontType: "Racing Slicks",
+        rearType: "Racing Slicks",
+        frontLeftPressure: 2.1,
+        frontRightPressure: 2.1,
+        rearLeftPressure: 2.0,
+        rearRightPressure: 2.0,
+        frontCompound: "Medium",
+        rearCompound: "Medium",
+      },
+      engine: {
+        type: "V8 Naturally Aspirated",
+        maxPower: 485,
+        maxTorque: 520,
+        peakRpm: 7200,
+        redline: 8500,
+      },
+      gearbox: {
+        type: "Sequential 6-Speed",
+        gear1: 3.45,
+        gear2: 2.18,
+        gear3: 1.64,
+        gear4: 1.28,
+        gear5: 1.05,
+        gear6: 0.89,
+        finalDrive: 3.73,
+        differential: 15,
+      },
+    };
+  }
 
   renderLiveTelemetryPanel() {
     const { liveOBD, obdConnected } = this.state;
@@ -269,7 +368,7 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
   }
 
   render() {
-    const { currentProfile, activeTab, setup, liveOBD, obdConnected, obdError, connecting, saveConfirmation } = this.state;
+    const { currentProfile, activeTab, setup, liveOBD, obdConnected, obdError, connecting, saveConfirmation, deleteConfirmation, copyConfirmation, errorMessage, profileNameInput } = this.state;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-racing-dark text-white">
@@ -312,16 +411,16 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
 
           {/* Profile Selection */}
           <Card className="p-6 bg-gradient-to-r from-gray-900/80 to-gray-800/80 border border-gray-700/60 mb-8 shadow-lg">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <Wrench className="h-6 w-6 text-racing-yellow" />
                 <div>
                   <h3 className="text-xl font-semibold text-racing-yellow">Setup Profile</h3>
-                  <p className="text-muted-foreground text-sm">Load or save vehicle configurations</p>
+                  <p className="text-muted-foreground text-sm">Load, save, copy, or delete vehicle configurations</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="space-y-2">
+              <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-center">
+                <div className="space-y-2 w-full md:w-auto">
                   <Label htmlFor="profile">Current Profile</Label>
                   <select
                     id="profile"
@@ -337,21 +436,38 @@ class VehicleSetupPage extends React.Component<{}, VehicleSetupState & { liveOBD
                     ))}
                   </select>
                 </div>
+                <div className="space-y-2 w-full md:w-auto">
+                  <Label htmlFor="profileNameInput">Profile Name</Label>
+                  <input
+                    id="profileNameInput"
+                    name="profileNameInput"
+                    type="text"
+                    value={profileNameInput ?? setup.name}
+                    onChange={this.handleProfileNameInput}
+                    className="px-3 py-2 bg-background/60 border border-border/50 rounded-md text-white min-w-[200px] focus:ring-2 focus:ring-racing-orange"
+                    placeholder="Enter profile name"
+                  />
+                </div>
                 <div className="flex gap-2">
                   <RacingButton size="sm" variant="default" title="Save Profile" onClick={this.saveSetup}>
                     <Save className="h-4 w-4" /> Save
                   </RacingButton>
-                  <RacingButton size="sm" variant="outline" title="Copy Profile">
+                  <RacingButton size="sm" variant="outline" title="Copy Profile" onClick={this.copyProfile}>
                     <Copy className="h-4 w-4" />
                   </RacingButton>
-                  <RacingButton size="sm" variant="outline" title="Delete Profile">
+                  <RacingButton size="sm" variant="outline" title="Delete Profile" onClick={this.deleteProfile}>
                     <Trash2 className="h-4 w-4" />
                   </RacingButton>
                 </div>
               </div>
             </div>
-            {saveConfirmation && (
-              <div className="mt-2 text-green-400 text-sm font-semibold">Profile saved!</div>
+            {(saveConfirmation || deleteConfirmation || copyConfirmation || errorMessage) && (
+              <div className="mt-2 text-sm font-semibold">
+                {saveConfirmation && <span className="text-green-400">Profile saved!</span>}
+                {deleteConfirmation && <span className="text-red-400">Profile deleted!</span>}
+                {copyConfirmation && <span className="text-blue-400">Profile copied!</span>}
+                {errorMessage && <span className="text-red-400">{errorMessage}</span>}
+              </div>
             )}
           </Card>
 
