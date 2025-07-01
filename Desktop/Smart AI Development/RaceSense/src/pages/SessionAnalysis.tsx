@@ -91,13 +91,28 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
 
   loadRealData = async () => {
     try {
+      console.log("=== Loading real data ===");
       this.setState({ isAnalyzing: true, error: null });
 
       // Load real sessions from storage
       const sessions = dataManagementService.getAllSessions();
+      console.log(`Loaded ${sessions.length} sessions from storage`);
+      
+      // Debug each session
+      sessions.forEach((session, index) => {
+        console.log(`Session ${index + 1}: ${session.name}`);
+        console.log(`  - ID: ${session.id}`);
+        console.log(`  - Track: ${session.track}`);
+        console.log(`  - Telemetry points: ${session.telemetryData?.length || 0}`);
+        console.log(`  - Has telemetry data: ${!!session.telemetryData}`);
+        if (session.telemetryData && session.telemetryData.length > 0) {
+          console.log(`  - First telemetry point:`, session.telemetryData[0]);
+        }
+      });
       
       // Extract unique tracks
       const tracks = [...new Set(sessions.map(s => s.track))];
+      console.log(`Found ${tracks.length} unique tracks:`, tracks);
       
       this.setState({
         availableSessions: sessions,
@@ -107,8 +122,10 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
       });
 
       if (tracks.length > 0) {
+        console.log(`Analyzing first track: ${tracks[0]}`);
         await this.analyzeTrack(tracks[0]);
       } else {
+        console.log("No tracks found, setting error");
         this.setState({
           error: "No session data found. Please record some sessions first.",
         });
@@ -264,21 +281,73 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
 
   generateSampleData = async () => {
     try {
+      console.log("=== Starting sample data generation from SessionAnalysis ===");
+      
+      // Generate sample sessions
       dataGeneratorService.generateSampleSessions();
+      
+      // Wait a moment for localStorage operations to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log("Sample data generation completed, reloading data...");
+      
+      // Reload data
+      await this.loadRealData();
+      
       notify.success("Sample Data Generated", "Sample session data has been created for testing");
-      this.loadRealData(); // Reload data
     } catch (error) {
+      console.error("Error generating sample data:", error);
       notify.error("Generation Failed", `Failed to generate sample data: ${error}`);
     }
   };
 
   testSingleSession = async () => {
     try {
+      console.log("=== Creating single test session ===");
+      
       dataGeneratorService.testCreateSingleSession();
+      
+      // Wait a moment for localStorage operations to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log("Test session created, reloading data...");
+      
+      // Reload data
+      await this.loadRealData();
+      
       notify.success("Test Session Created", "Single test session with telemetry data created");
-      this.loadRealData(); // Reload data
     } catch (error) {
+      console.error("Error creating test session:", error);
       notify.error("Test Failed", `Failed to create test session: ${error}`);
+    }
+  };
+
+  debugClearAndGenerate = async () => {
+    try {
+      console.log("=== DEBUG: Clearing localStorage and generating fresh data ===");
+      
+      // Manually clear localStorage
+      localStorage.clear();
+      console.log("Cleared all localStorage");
+      
+      // Wait a moment
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Generate fresh sample data
+      dataGeneratorService.generateSampleSessions();
+      
+      // Wait for generation to complete
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      console.log("Fresh data generated, reloading...");
+      
+      // Reload data
+      await this.loadRealData();
+      
+      notify.success("Debug Complete", "Cleared localStorage and generated fresh sample data");
+    } catch (error) {
+      console.error("Debug error:", error);
+      notify.error("Debug Failed", `Debug operation failed: ${error}`);
     }
   };
 
@@ -468,6 +537,14 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
                      >
                        <Database className="h-4 w-4 mr-2" />
                        Test Single Session
+                     </RacingButton>
+                     <RacingButton
+                       onClick={this.debugClearAndGenerate}
+                       disabled={isAnalyzing}
+                       className="w-full bg-red-600 hover:bg-red-700"
+                     >
+                       <RefreshCw className="h-4 w-4 mr-2" />
+                       Debug: Clear & Generate
                      </RacingButton>
                      <RacingButton
                        onClick={this.exportAnalysisData}
