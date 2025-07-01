@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader } from "@googlemaps/js-api-loader";
-import { Timer, Trash2, Plus, Globe, Save, ArrowLeft, Info, Flag } from "lucide-react";
+import { Timer, Trash2, Plus, Globe, Save, ArrowLeft, Info, Flag, MapPin } from "lucide-react";
 import { useNotifications } from "@/components/RacingNotifications";
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyA5ondxplwoNnMztrYiYnr2Gs8Uwm-8MLk";
@@ -38,6 +38,7 @@ const TrackCreator: React.FC = () => {
   const mapInstanceRef = useRef<any>(null);
   const sectorMarkersRef = useRef<any[]>([]);
   const sectorsCountRef = useRef<number>(0);
+  const currentLocationMarkerRef = useRef<any>(null);
 
   const [track, setTrack] = useState<CustomTrack>({
     id: "",
@@ -55,6 +56,8 @@ const TrackCreator: React.FC = () => {
   const [dragMode, setDragMode] = useState<"sectors" | "none">("none");
   const [isDragging, setIsDragging] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
 
   // Update sectors count ref whenever sectors change
   useEffect(() => {
@@ -199,6 +202,107 @@ const TrackCreator: React.FC = () => {
       setTrack(prev => ({ ...prev, sectors: [...prev.sectors, newSector] }));
       notify({ type: "success", title: "Sector Added", message: `Added sector at center: ${lat.toFixed(6)}, ${lng.toFixed(6)}` });
     }
+  };
+
+  // Add sector at current location
+  const addSectorAtCurrentLocation = () => {
+    if (!currentLocation) {
+      notify({ type: "warning", title: "No Location", message: "Please get your current location first" });
+      return;
+    }
+    
+    const currentSectorsCount = sectorsCountRef.current;
+    const newPoint: SectorPoint = {
+      id: Date.now().toString(),
+      lat: currentLocation.lat,
+      lng: currentLocation.lng,
+      name: `Sector Point ${currentSectorsCount * 2 + 1}`,
+    };
+    const newSector = {
+      id: currentSectorsCount + 1,
+      name: `Sector ${currentSectorsCount + 1}`,
+      startPoint: newPoint,
+      endPoint: { ...newPoint, id: (Date.now() + 1).toString() },
+      length: 0,
+    };
+    setTrack(prev => ({ ...prev, sectors: [...prev.sectors, newSector] }));
+    notify({ type: "success", title: "Sector Added", message: `Added sector at your location: ${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}` });
+  };
+
+  // Get current location and center map
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      notify({ type: "error", title: "Geolocation Not Supported", message: "Your browser doesn't support geolocation" });
+      return;
+    }
+
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const newLocation = { lat: latitude, lng: longitude };
+        
+        setCurrentLocation(newLocation);
+        
+        // Center map on current location
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.setCenter(newLocation);
+          mapInstanceRef.current.setZoom(15); // Closer zoom for current location
+        }
+        
+        // Add current location marker
+        if (mapInstanceRef.current && currentLocationMarkerRef.current) {
+          currentLocationMarkerRef.current.setMap(null); // Remove existing marker
+        }
+        
+        if (mapInstanceRef.current) {
+          // @ts-ignore
+          const marker = new window.google.maps.Marker({
+            position: newLocation,
+            map: mapInstanceRef.current,
+            title: "Your Current Location",
+            icon: {
+              // @ts-ignore
+              path: window.google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: "#3b82f6",
+              fillOpacity: 0.8,
+              strokeColor: "#ffffff",
+              strokeWeight: 2,
+            },
+          });
+          currentLocationMarkerRef.current = marker;
+        }
+        
+        setLocationLoading(false);
+        notify({ 
+          type: "success", 
+          title: "Location Found", 
+          message: `Centered map on your location: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}` 
+        });
+      },
+      (error) => {
+        setLocationLoading(false);
+        let errorMessage = "Failed to get your location";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location permission denied. Please allow location access.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information unavailable.";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out.";
+            break;
+        }
+        notify({ type: "error", title: "Location Error", message: errorMessage });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
   };
 
   // Update sector markers
@@ -383,6 +487,17 @@ const TrackCreator: React.FC = () => {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={getCurrentLocation}
+                      className="border-blue-600/50 text-blue-400 hover:bg-blue-400/10 transition-all duration-200"
+                      title="Get Current Location"
+                      disabled={!mapReady || locationLoading}
+                    >
+                      <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">{locationLoading ? "Loading..." : "Location"}</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={addSectorAtCenter}
                       className="border-green-600/50 text-green-400 hover:bg-green-400/10 transition-all duration-200"
                       title="Test: Add Sector at Center"
@@ -452,8 +567,16 @@ const TrackCreator: React.FC = () => {
                   <Timer className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   Add Sector
                 </Button>
+                <Button
+                  onClick={addSectorAtCurrentLocation}
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-lg shadow-blue-500/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                  disabled={!mapReady || !currentLocation}
+                >
+                  <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  Add Sector at Location
+                </Button>
                 <div className="text-xs text-gray-400 text-center pt-2">
-                  These buttons add elements at the map center
+                  Use "Location" button to get your current position first
                 </div>
               </CardContent>
             </Card>
