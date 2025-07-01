@@ -122,6 +122,10 @@ const ModeSelection: React.FC = () => {
     setSelectedTrack(null);
   };
 
+  const handleNavigateToTrackSelection = () => {
+    navigate('/track-selection');
+  };
+
   const handleTrackSelect = (track: any) => {
     setSelectedTrack(track);
     setShowTrackSelector(false);
@@ -307,6 +311,15 @@ const ModeSelection: React.FC = () => {
                     >
                       <Star className="h-4 w-4 mr-1" />
                       Finnish Tracks
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleNavigateToTrackSelection}
+                      className="border-purple-500 text-purple-400 hover:bg-purple-500/10"
+                    >
+                      <Globe className="h-4 w-4 mr-1" />
+                      Advanced Track Selection
                     </Button>
                   </div>
 

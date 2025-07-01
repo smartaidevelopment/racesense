@@ -22,6 +22,7 @@ import MobileRacingPage from './pages/MobileRacing'
 import RealRacingIntegration from './pages/RealRacingIntegration'
 import TracksPage from './pages/Tracks'
 import TrackCreator from './pages/TrackCreator'
+import TrackSelection from './pages/TrackSelection'
 import { SimpleThemeProvider } from './components/SimpleThemeProvider'
 import { NotificationProvider } from './components/RacingNotifications'
 
@@ -106,6 +107,7 @@ const App = () => {
                   <Route path="/mobile-racing" element={<MobileRacingPage />} />
                   <Route path="/real-racing-integration" element={<RealRacingIntegration />} />
                   <Route path="/tracks" element={<TracksPage />} />
+                  <Route path="/track-selection" element={<TrackSelection />} />
                   <Route path="/track-creator" element={<TrackCreator />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
