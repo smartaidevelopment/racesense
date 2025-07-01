@@ -233,6 +233,42 @@ class DataGeneratorService {
     
     return hasData;
   }
+
+  // Test method to create a single session with telemetry data
+  testCreateSingleSession(): void {
+    console.log("Testing single session creation...");
+    
+    const telemetryData = this.generateTelemetryData("Silverstone GP", "practice");
+    console.log(`Generated ${telemetryData.length} telemetry points for test`);
+    
+    const session: Omit<SessionData, "id"> = {
+      name: "Test Session with Telemetry",
+      track: "Silverstone GP",
+      type: "practice",
+      date: new Date(),
+      duration: 1800,
+      bestLapTime: 83000,
+      totalLaps: 5,
+      notes: "Test session with telemetry data",
+      telemetryData: telemetryData,
+      metadata: {
+        weather: "Sunny",
+        temperature: 20,
+        trackCondition: "Dry",
+      },
+    };
+
+    const sessionId = dataManagementService.addSession(session);
+    console.log(`Test session created with ID: ${sessionId}`);
+    
+    // Verify the session was created correctly
+    const createdSession = dataManagementService.getSession(sessionId);
+    if (createdSession) {
+      console.log(`Verified session: ${createdSession.name} with ${createdSession.telemetryData?.length || 0} telemetry points`);
+    } else {
+      console.error("Failed to retrieve created session");
+    }
+  }
 }
 
 export const dataGeneratorService = new DataGeneratorService(); 

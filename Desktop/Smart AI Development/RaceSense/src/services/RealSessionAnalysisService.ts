@@ -138,14 +138,41 @@ class RealSessionAnalysisService {
     const telemetryData = session.telemetryData;
     console.log(`Processing session ${sessionId} with ${telemetryData.length} telemetry points`);
     
+    // Debug: Check first few telemetry points
+    if (telemetryData.length > 0) {
+      console.log(`First telemetry point:`, {
+        timestamp: telemetryData[0].timestamp,
+        position: telemetryData[0].position,
+        speed: telemetryData[0].speed
+      });
+      console.log(`Last telemetry point:`, {
+        timestamp: telemetryData[telemetryData.length - 1].timestamp,
+        position: telemetryData[telemetryData.length - 1].position,
+        speed: telemetryData[telemetryData.length - 1].speed
+      });
+    }
+    
     const laps: RealLapData[] = [];
     
     // Group telemetry data by laps (assuming lap detection logic)
     const lapGroups = this.groupTelemetryByLaps(telemetryData, session);
     console.log(`Created ${lapGroups.length} lap groups`);
     
+    if (lapGroups.length === 0) {
+      console.error("No lap groups created. This indicates a problem with lap detection logic.");
+      console.error("Session info:", {
+        name: session.name,
+        totalLaps: session.totalLaps,
+        telemetryPoints: telemetryData.length
+      });
+      return [];
+    }
+    
     lapGroups.forEach((lapTelemetry, lapIndex) => {
-      if (lapTelemetry.length === 0) return;
+      if (lapTelemetry.length === 0) {
+        console.warn(`Lap group ${lapIndex} is empty, skipping`);
+        return;
+      }
 
       const distance = this.calculateLapDistance(lapTelemetry);
       const isValid = this.validateLap(lapTelemetry);
@@ -191,16 +218,33 @@ class RealSessionAnalysisService {
       throw new Error(`No sessions found for track: ${trackId}`);
     }
 
+    // Debug: Check each session for telemetry data
+    sessions.forEach(session => {
+      console.log(`Session ${session.name}: ${session.telemetryData?.length || 0} telemetry points`);
+    });
+
     const allLaps: RealLapData[] = [];
     
     // Convert all sessions to lap data
     for (const session of sessions) {
       console.log(`Processing session: ${session.name}`);
       const sessionLaps = await this.convertSessionToLapData(session.id);
+      console.log(`Session ${session.name} produced ${sessionLaps.length} laps`);
       allLaps.push(...sessionLaps);
     }
 
     console.log(`Total laps found: ${allLaps.length}`);
+    
+    if (allLaps.length === 0) {
+      console.error("No laps were created from any sessions. This indicates a problem with session data or lap conversion.");
+      console.error("Sessions available:", sessions.map(s => ({
+        name: s.name,
+        telemetryPoints: s.telemetryData?.length || 0,
+        totalLaps: s.totalLaps
+      })));
+      throw new Error("No laps found for analysis - check session telemetry data");
+    }
+    
     let validLaps = allLaps.filter(lap => lap.isValidLap);
     console.log(`Valid laps: ${validLaps.length}`);
     
@@ -222,10 +266,6 @@ class RealSessionAnalysisService {
       
       validLaps = allLaps;
       lapTimes = validLaps.map(lap => lap.lapTime);
-      
-      if (lapTimes.length === 0) {
-        throw new Error("No laps found for analysis");
-      }
       
       console.log(`Using fallback: ${validLaps.length} laps marked as valid`);
     }
@@ -343,10 +383,14 @@ class RealSessionAnalysisService {
     const pointsPerLap = Math.floor(telemetryData.length / totalLaps);
     const lapGroups: TelemetryPoint[][] = [];
 
+    console.log(`Lap detection: ${telemetryData.length} points, ${totalLaps} laps, ${pointsPerLap} points per lap`);
+
     for (let i = 0; i < totalLaps; i++) {
       const startIndex = i * pointsPerLap;
       const endIndex = i === totalLaps - 1 ? telemetryData.length : (i + 1) * pointsPerLap;
       const lapData = telemetryData.slice(startIndex, endIndex);
+      
+      console.log(`Lap ${i + 1}: ${startIndex} to ${endIndex} (${lapData.length} points)`);
       
       if (lapData.length > 0) {
         lapGroups.push(lapData);
@@ -355,9 +399,11 @@ class RealSessionAnalysisService {
 
     // If no laps were created, create at least one lap with all data
     if (lapGroups.length === 0 && telemetryData.length > 0) {
+      console.log("No laps created, creating single lap with all data");
       lapGroups.push(telemetryData);
     }
 
+    console.log(`Final lap groups: ${lapGroups.length}`);
     return lapGroups;
   }
 

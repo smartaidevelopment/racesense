@@ -272,6 +272,16 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
     }
   };
 
+  testSingleSession = async () => {
+    try {
+      dataGeneratorService.testCreateSingleSession();
+      notify.success("Test Session Created", "Single test session with telemetry data created");
+      this.loadRealData(); // Reload data
+    } catch (error) {
+      notify.error("Test Failed", `Failed to create test session: ${error}`);
+    }
+  };
+
   handleNavigation = (path: string) => {
     if (typeof window !== "undefined") {
       window.history.pushState(null, "", path);
@@ -450,6 +460,14 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
                      >
                        <Database className="h-4 w-4 mr-2" />
                        Generate Sample Data
+                     </RacingButton>
+                     <RacingButton
+                       onClick={this.testSingleSession}
+                       disabled={isAnalyzing}
+                       className="w-full bg-purple-600 hover:bg-purple-700"
+                     >
+                       <Database className="h-4 w-4 mr-2" />
+                       Test Single Session
                      </RacingButton>
                      <RacingButton
                        onClick={this.exportAnalysisData}
