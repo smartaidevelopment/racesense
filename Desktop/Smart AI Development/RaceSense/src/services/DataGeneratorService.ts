@@ -174,8 +174,8 @@ class DataGeneratorService {
 
   // Interpolate position along track
   private interpolateTrackPosition(trackParams: any, progress: number) {
-    // Simple circular track simulation
-    const radius = 0.01; // ~1km radius
+    // More realistic track simulation with larger radius for proper distances
+    const radius = 0.05; // ~5km radius for more realistic lap distances
     const centerLat = trackParams.startLat;
     const centerLng = trackParams.startLng;
     
