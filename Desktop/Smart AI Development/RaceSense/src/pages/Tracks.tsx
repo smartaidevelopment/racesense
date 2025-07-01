@@ -261,16 +261,16 @@ const TracksPage: React.FC = () => {
             {showFilters && (
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 pt-4 border-t border-gray-700">
                 <Select
-                  value={filters.country || ""}
+                  value={filters.country || "all"}
                   onValueChange={(value) =>
-                    setFilters({ ...filters, country: value || undefined })
+                    setFilters({ ...filters, country: value === "all" ? undefined : value })
                   }
                 >
                   <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                     <SelectValue placeholder="Country" />
                   </SelectTrigger>
                   <SelectContent className="bg-gray-700 border-gray-600">
-                    <SelectItem value="">All Countries</SelectItem>
+                    <SelectItem value="all">All Countries</SelectItem>
                     {countries.map((country) => (
                       <SelectItem key={country} value={country}>
                         {country}
@@ -280,11 +280,11 @@ const TracksPage: React.FC = () => {
                 </Select>
 
                 <Select
-                  value={filters.type || ""}
+                  value={filters.type || "all"}
                   onValueChange={(value) =>
                     setFilters({
                       ...filters,
-                      type: (value as RacingTrack["type"]) || undefined,
+                      type: value === "all" ? undefined : (value as RacingTrack["type"]),
                     })
                   }
                 >
@@ -292,7 +292,7 @@ const TracksPage: React.FC = () => {
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
                   <SelectContent className="bg-gray-700 border-gray-600">
-                    <SelectItem value="">All Types</SelectItem>
+                    <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value="formula1">Formula 1</SelectItem>
                     <SelectItem value="motogp">MotoGP</SelectItem>
                     <SelectItem value="indycar">IndyCar</SelectItem>
@@ -308,11 +308,11 @@ const TracksPage: React.FC = () => {
                 </Select>
 
                 <Select
-                  value={filters.category || ""}
+                  value={filters.category || "all"}
                   onValueChange={(value) =>
                     setFilters({
                       ...filters,
-                      category: (value as RacingTrack["category"]) || undefined,
+                      category: value === "all" ? undefined : (value as RacingTrack["category"]),
                     })
                   }
                 >
@@ -320,7 +320,7 @@ const TracksPage: React.FC = () => {
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent className="bg-gray-700 border-gray-600">
-                    <SelectItem value="">All Categories</SelectItem>
+                    <SelectItem value="all">All Categories</SelectItem>
                     <SelectItem value="professional">Professional</SelectItem>
                     <SelectItem value="club">Club</SelectItem>
                     <SelectItem value="private">Private</SelectItem>
