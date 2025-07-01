@@ -43,6 +43,7 @@ import {
   Database,
   FileText,
   Settings,
+  Trash2,
 } from "lucide-react";
 
 interface SessionAnalysisState {
@@ -235,10 +236,22 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
   };
 
   handleTrackChange = (trackId: string) => {
+    if (!trackId) {
+      this.setState({ selectedTrack: null, trackAnalysis: null, error: null });
+      return;
+    }
+    
+    console.log(`Track changed to: ${trackId}`);
     this.analyzeTrack(trackId);
   };
 
   handleSessionChange = (sessionId: string) => {
+    if (!sessionId) {
+      this.setState({ selectedSession: null, sessionMetrics: null, error: null });
+      return;
+    }
+    
+    console.log(`Session changed to: ${sessionId}`);
     this.analyzeSession(sessionId);
   };
 
@@ -248,7 +261,13 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
       return;
     }
 
+    if (!this.state.trackAnalysis) {
+      notify.error("No Analysis Data", "Please analyze a track first before exporting");
+      return;
+    }
+
     try {
+      this.setState({ isAnalyzing: true });
       const analysisData = await realSessionAnalysisService.exportAnalysisData(this.state.selectedTrack);
       
       // Create and download file
@@ -262,40 +281,50 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
+      this.setState({ isAnalyzing: false });
       notify.success("Export Complete", "Analysis data exported successfully");
     } catch (error) {
+      this.setState({ isAnalyzing: false });
+      console.error("Export error:", error);
       notify.error("Export Failed", `Failed to export analysis data: ${error}`);
     }
   };
 
   importAnalysisData = async (file: File) => {
     try {
+      this.setState({ isAnalyzing: true });
       const text = await file.text();
       await realSessionAnalysisService.importAnalysisData(text);
+      await this.loadRealData(); // Reload data
+      this.setState({ isAnalyzing: false });
       notify.success("Import Complete", "Analysis data imported successfully");
-      this.loadRealData(); // Reload data
     } catch (error) {
+      this.setState({ isAnalyzing: false });
+      console.error("Import error:", error);
       notify.error("Import Failed", `Failed to import analysis data: ${error}`);
     }
   };
 
   generateSampleData = async () => {
     try {
+      this.setState({ isAnalyzing: true, error: null });
       console.log("=== Starting sample data generation from SessionAnalysis ===");
       
       // Generate sample sessions
       dataGeneratorService.generateSampleSessions();
       
       // Wait a moment for localStorage operations to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       console.log("Sample data generation completed, reloading data...");
       
       // Reload data
       await this.loadRealData();
       
+      this.setState({ isAnalyzing: false });
       notify.success("Sample Data Generated", "Sample session data has been created for testing");
     } catch (error) {
+      this.setState({ isAnalyzing: false });
       console.error("Error generating sample data:", error);
       notify.error("Generation Failed", `Failed to generate sample data: ${error}`);
     }
@@ -303,20 +332,23 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
 
   testSingleSession = async () => {
     try {
+      this.setState({ isAnalyzing: true, error: null });
       console.log("=== Creating single test session ===");
       
       dataGeneratorService.testCreateSingleSession();
       
       // Wait a moment for localStorage operations to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       console.log("Test session created, reloading data...");
       
       // Reload data
       await this.loadRealData();
       
+      this.setState({ isAnalyzing: false });
       notify.success("Test Session Created", "Single test session with telemetry data created");
     } catch (error) {
+      this.setState({ isAnalyzing: false });
       console.error("Error creating test session:", error);
       notify.error("Test Failed", `Failed to create test session: ${error}`);
     }
@@ -324,6 +356,7 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
 
   debugClearAndGenerate = async () => {
     try {
+      this.setState({ isAnalyzing: true, error: null });
       console.log("=== DEBUG: Clearing localStorage and generating fresh data ===");
       
       // Manually clear localStorage
@@ -331,21 +364,23 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
       console.log("Cleared all localStorage");
       
       // Wait a moment
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       // Generate fresh sample data
       dataGeneratorService.generateSampleSessions();
       
       // Wait for generation to complete
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       console.log("Fresh data generated, reloading...");
       
       // Reload data
       await this.loadRealData();
       
+      this.setState({ isAnalyzing: false });
       notify.success("Debug Complete", "Cleared localStorage and generated fresh sample data");
     } catch (error) {
+      this.setState({ isAnalyzing: false });
       console.error("Debug error:", error);
       notify.error("Debug Failed", `Debug operation failed: ${error}`);
     }
@@ -353,21 +388,24 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
 
   forceReloadWithTelemetry = async () => {
     try {
+      this.setState({ isAnalyzing: true, error: null });
       console.log("=== Force reloading with telemetry data ===");
       
       // Force reload sessions with telemetry data
       dataManagementService.forceReloadWithTelemetry();
       
       // Wait a moment for the reload to complete
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       console.log("Force reload complete, refreshing data...");
       
       // Reload data
       await this.loadRealData();
       
+      this.setState({ isAnalyzing: false });
       notify.success("Force Reload Complete", "Sessions reloaded with telemetry data");
     } catch (error) {
+      this.setState({ isAnalyzing: false });
       console.error("Force reload error:", error);
       notify.error("Force Reload Failed", `Force reload operation failed: ${error}`);
     }
@@ -375,20 +413,23 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
 
   createDebugSession = async () => {
     try {
+      this.setState({ isAnalyzing: true, error: null });
       console.log("=== Creating debug session from SessionAnalysis ===");
       
       const sessionId = await realSessionAnalysisService.createDebugSession();
       
       // Wait a moment for localStorage operations to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       console.log("Debug session created, reloading data...");
       
       // Reload data
       await this.loadRealData();
       
+      this.setState({ isAnalyzing: false });
       notify.success("Debug Session Created", `Debug session created with ID: ${sessionId}`);
     } catch (error) {
+      this.setState({ isAnalyzing: false });
       console.error("Error creating debug session:", error);
       notify.error("Debug Session Failed", `Failed to create debug session: ${error}`);
     }
@@ -523,6 +564,17 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
                       <option key={track} value={track}>{track}</option>
                     ))}
                   </select>
+                  {availableTracks.length === 0 && (
+                    <div className="text-xs text-yellow-400 mb-2">
+                      No tracks available. Generate sample data first.
+                    </div>
+                  )}
+                  {isAnalyzing && selectedTrack && (
+                    <div className="text-xs text-blue-400 flex items-center gap-1">
+                      <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-400"></div>
+                      Analyzing track...
+                    </div>
+                  )}
                 </div>
               </Card>
 
@@ -546,6 +598,17 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
                       </option>
                     ))}
                   </select>
+                  {availableSessions.length === 0 && (
+                    <div className="text-xs text-yellow-400 mb-2">
+                      No sessions available. Generate sample data first.
+                    </div>
+                  )}
+                  {isAnalyzing && selectedSession && (
+                    <div className="text-xs text-blue-400 flex items-center gap-1">
+                      <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-400"></div>
+                      Analyzing session...
+                    </div>
+                  )}
                 </div>
               </Card>
 
@@ -556,11 +619,37 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
                     <Settings className="h-4 w-4" />
                     Analysis Controls
                   </h3>
+                  {error && (
+                    <div className="mb-3 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <strong>Error:</strong> {error}
+                        </div>
+                        <button
+                          onClick={() => this.setState({ error: null })}
+                          className="text-red-300 hover:text-red-100 ml-2"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {!error && (
+                    <div className="mb-3 p-2 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-400">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                        <span>
+                          {trackAnalysis ? 'Analysis ready' : 'Select a track to analyze'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                                      <div className="space-y-2">
                      <RacingButton
                        onClick={this.loadRealData}
                        disabled={isAnalyzing}
                        className="w-full bg-blue-600 hover:bg-blue-700"
+                       title="Reload all session and track data from storage"
                      >
                        <RefreshCw className={`h-4 w-4 mr-2 ${isAnalyzing ? 'animate-spin' : ''}`} />
                        Refresh Data
@@ -569,6 +658,7 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
                        onClick={this.generateSampleData}
                        disabled={isAnalyzing}
                        className="w-full bg-orange-600 hover:bg-orange-700"
+                       title="Create sample sessions with telemetry data for testing"
                      >
                        <Database className="h-4 w-4 mr-2" />
                        Generate Sample Data
@@ -577,6 +667,7 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
                        onClick={this.testSingleSession}
                        disabled={isAnalyzing}
                        className="w-full bg-purple-600 hover:bg-purple-700"
+                       title="Create a single test session with telemetry data"
                      >
                        <Database className="h-4 w-4 mr-2" />
                        Test Single Session
@@ -585,6 +676,7 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
                        onClick={this.debugClearAndGenerate}
                        disabled={isAnalyzing}
                        className="w-full bg-red-600 hover:bg-red-700"
+                       title="Clear all data and generate fresh sample data (debug mode)"
                      >
                        <RefreshCw className="h-4 w-4 mr-2" />
                        Debug: Clear & Generate
@@ -593,6 +685,7 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
                        onClick={this.forceReloadWithTelemetry}
                        disabled={isAnalyzing}
                        className="w-full bg-orange-600 hover:bg-orange-700"
+                       title="Force reload sessions with telemetry data (fixes missing telemetry)"
                      >
                        <RefreshCw className="h-4 w-4 mr-2" />
                        Force Reload with Telemetry
@@ -601,14 +694,38 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
                        onClick={this.createDebugSession}
                        disabled={isAnalyzing}
                        className="w-full bg-purple-600 hover:bg-purple-700"
+                       title="Create a test session with telemetry data for debugging"
                      >
                        <Database className="h-4 w-4 mr-2" />
                        Create Debug Session
                      </RacingButton>
                      <RacingButton
+                       onClick={() => {
+                         if (window.confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+                           localStorage.clear();
+                           this.setState({
+                             availableSessions: [],
+                             availableTracks: [],
+                             selectedTrack: null,
+                             selectedSession: null,
+                             trackAnalysis: null,
+                             error: null
+                           });
+                           notify.success("Data Cleared", "All data has been cleared");
+                         }
+                       }}
+                       disabled={isAnalyzing}
+                       className="w-full bg-red-600 hover:bg-red-700"
+                       title="Clear all stored data (sessions, tracks, analysis)"
+                     >
+                       <Trash2 className="h-4 w-4 mr-2" />
+                       Clear All Data
+                     </RacingButton>
+                     <RacingButton
                        onClick={this.exportAnalysisData}
                        disabled={!trackAnalysis}
                        className="w-full bg-green-600 hover:bg-green-700"
+                       title="Export current track analysis data as JSON file"
                      >
                        <Download className="h-4 w-4 mr-2" />
                        Export Analysis
@@ -619,10 +736,15 @@ class SessionAnalysisPage extends React.Component<{}, SessionAnalysisState> {
                         accept=".json"
                         onChange={(e) => e.target.files?.[0] && this.importAnalysisData(e.target.files[0])}
                         className="hidden"
+                        disabled={isAnalyzing}
                       />
-                      <div className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-lg p-2 text-center cursor-pointer transition-colors">
-                        <Upload className="h-4 w-4 mr-2 inline" />
-                        Import Analysis
+                      <div className={`w-full text-white rounded-lg p-2 text-center cursor-pointer transition-colors ${
+                        isAnalyzing 
+                          ? 'bg-gray-600 cursor-not-allowed' 
+                          : 'bg-purple-600 hover:bg-purple-700'
+                      }`}>
+                        <Upload className={`h-4 w-4 mr-2 inline ${isAnalyzing ? 'animate-spin' : ''}`} />
+                        {isAnalyzing ? 'Importing...' : 'Import Analysis'}
                       </div>
                     </label>
                   </div>
