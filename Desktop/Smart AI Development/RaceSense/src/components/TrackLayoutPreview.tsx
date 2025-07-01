@@ -48,7 +48,10 @@ const TrackLayoutPreview: React.FC<TrackLayoutPreviewProps> = ({
   }, [trackId]);
 
   useEffect(() => {
-    if (!track || !canvasRef.current) return;
+    if (!track || !canvasRef.current) {
+      console.log('No track or canvas for', trackId, track);
+      return;
+    }
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -76,6 +79,9 @@ const TrackLayoutPreview: React.FC<TrackLayoutPreviewProps> = ({
     );
     const offsetX = (width - (bounds.maxX - bounds.minX) * scale) / 2 - bounds.minX * scale;
     const offsetY = (height - (bounds.maxY - bounds.minY) * scale) / 2 - bounds.minY * scale;
+
+    // Debug log
+    console.log('Drawing track', trackId, track, { width, height, bounds, scale, offsetX, offsetY });
 
     // Draw track boundaries
     drawTrackBoundaries(ctx, track, scale, offsetX, offsetY);
@@ -346,9 +352,16 @@ const TrackLayoutPreview: React.FC<TrackLayoutPreviewProps> = ({
       <CardContent className="p-2">
         <canvas
           ref={canvasRef}
-          className="w-full h-auto border border-gray-700 rounded"
-          style={{ background: '#1a1a1a' }}
+          className="w-full h-auto border border-red-500 rounded"
+          style={{ background: '#1a1a1a', border: '2px solid red' }}
         />
+        
+        {/* Fallback error message if track data is missing */}
+        {!track && !loading && (
+          <div style={{ color: 'red', marginTop: 8 }}>
+            Track data not found for ID: {trackId}
+          </div>
+        )}
         
         <div className="mt-2 space-y-1">
           <div className="flex items-center justify-between text-xs text-gray-400">

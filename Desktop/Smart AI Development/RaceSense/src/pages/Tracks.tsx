@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -533,6 +534,9 @@ const TracksPage: React.FC = () => {
 
               {/* Track Detail Dialog */}
               <DialogContent className="max-w-4xl bg-gray-800 border-gray-700 text-white max-h-[90vh] overflow-y-auto">
+                <DialogDescription>
+                  Detailed information about the selected track.
+                </DialogDescription>
                 <DialogHeader>
                   <DialogTitle className="text-2xl font-bold text-white">
                     {track.name}
