@@ -45,6 +45,11 @@ export interface SessionData {
     temperature?: number;
     trackCondition?: string;
     vehicleSetup?: any;
+    importSource?: string;
+    maxSpeed?: number;
+    dataPoints?: number;
+    vehicle?: string;
+    channels?: string[];
   };
   syncStatus?: {
     isUploaded: boolean;
@@ -84,7 +89,13 @@ class DataManagementService {
   }
 
   getSession(sessionId: string): SessionData | null {
-    return this.sessions.get(sessionId) || null;
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      console.log(`Retrieved session: ${session.name} with ${session.telemetryData?.length || 0} telemetry points`);
+    } else {
+      console.log(`Session not found: ${sessionId}`);
+    }
+    return session || null;
   }
 
   addSession(session: Omit<SessionData, "id">): string {
@@ -94,8 +105,12 @@ class DataManagementService {
       id,
     };
 
+    console.log(`Adding session: ${newSession.name} with ${newSession.telemetryData?.length || 0} telemetry points`);
+    
     this.sessions.set(id, newSession);
     this.saveSessions();
+    
+    console.log(`Session saved with ID: ${id}`);
     return id;
   }
 

@@ -7,6 +7,9 @@ import { dataManagementService } from "./DataManagementService";
 class DataGeneratorService {
   // Generate sample session data
   generateSampleSessions(): void {
+    // Clear existing demo sessions first
+    this.clearSampleData();
+    
     const tracks = [
       "Silverstone GP",
       "Spa-Francorchamps",
@@ -17,12 +20,19 @@ class DataGeneratorService {
 
     const sessionTypes: SessionData["type"][] = ["practice", "qualifying", "race", "test"];
 
+    console.log("Generating sample sessions...");
+
     // Generate 5 sample sessions
     for (let i = 0; i < 5; i++) {
       const track = tracks[i % tracks.length];
       const sessionType = sessionTypes[i % sessionTypes.length];
       const date = new Date();
       date.setDate(date.getDate() - i * 2); // Sessions every 2 days
+
+      console.log(`Generating session ${i + 1}: ${track} ${sessionType}`);
+
+      const telemetryData = this.generateTelemetryData(track, sessionType);
+      console.log(`Generated ${telemetryData.length} telemetry points`);
 
       const session: Omit<SessionData, "id"> = {
         name: `${track} ${sessionType.charAt(0).toUpperCase() + sessionType.slice(1)} Session ${i + 1}`,
@@ -33,7 +43,7 @@ class DataGeneratorService {
         bestLapTime: 80000 + Math.random() * 20000, // 1:20-1:40
         totalLaps: 10 + Math.floor(Math.random() * 20), // 10-30 laps
         notes: `Sample ${sessionType} session on ${track}`,
-        telemetryData: this.generateTelemetryData(track, sessionType),
+        telemetryData: telemetryData,
         metadata: {
           weather: ["Sunny", "Cloudy", "Light Rain"][Math.floor(Math.random() * 3)],
           temperature: 15 + Math.random() * 20, // 15-35°C
@@ -41,8 +51,11 @@ class DataGeneratorService {
         },
       };
 
-      dataManagementService.addSession(session);
+      const sessionId = dataManagementService.addSession(session);
+      console.log(`Created session with ID: ${sessionId}`);
     }
+
+    console.log("Sample session generation complete");
   }
 
   // Generate realistic telemetry data
@@ -188,20 +201,37 @@ class DataGeneratorService {
 
   // Clear all sample data
   clearSampleData(): void {
+    console.log("Clearing existing sample data...");
     const sessions = dataManagementService.getAllSessions();
+    let clearedCount = 0;
+    
     sessions.forEach(session => {
-      if (session.name.includes("Sample") || session.name.includes("Session")) {
+      if (session.name.includes("Sample") || 
+          session.name.includes("Session") ||
+          session.name.includes("Practice") ||
+          session.name.includes("Qualifying") ||
+          session.name.includes("Testing")) {
         dataManagementService.deleteSession(session.id);
+        clearedCount++;
       }
     });
+    
+    console.log(`Cleared ${clearedCount} existing sessions`);
   }
 
   // Check if sample data exists
   hasSampleData(): boolean {
     const sessions = dataManagementService.getAllSessions();
-    return sessions.some(session => 
+    const hasData = sessions.some(session => 
       session.name.includes("Sample") || session.name.includes("Session")
     );
+    
+    console.log(`Sample data check: ${hasData ? 'Found' : 'Not found'}`);
+    sessions.forEach(session => {
+      console.log(`Session: ${session.name}, Telemetry points: ${session.telemetryData?.length || 0}`);
+    });
+    
+    return hasData;
   }
 }
 
