@@ -41,6 +41,7 @@ import {
   Compass,
   Gauge,
   Filter,
+  ArrowLeft,
 } from "lucide-react";
 import { useNotifications } from "@/components/RacingNotifications";
 import trackService from "@/services/TrackService";
@@ -66,6 +67,7 @@ const ModeSelection: React.FC = () => {
   const [selectedTrack, setSelectedTrack] = useState<any>(null);
   const [customTracks, setCustomTracks] = useState<CustomTrack[]>([]);
   const [showTrackSelector, setShowTrackSelector] = useState(false);
+  const [showTrackConfiguration, setShowTrackConfiguration] = useState(false);
   const [trackFilter, setTrackFilter] = useState("all");
 
   // Load custom tracks from localStorage
@@ -106,13 +108,28 @@ const ModeSelection: React.FC = () => {
     });
   };
 
+  const handleStartSession = () => {
+    setShowTrackConfiguration(false);
+    notify({
+      type: "success",
+      title: "Session Ready",
+      message: `${selectedTrack.name} is configured and ready for your session`,
+    });
+  };
+
+  const handleBackToTrackSelection = () => {
+    setShowTrackConfiguration(false);
+    setSelectedTrack(null);
+  };
+
   const handleTrackSelect = (track: any) => {
     setSelectedTrack(track);
     setShowTrackSelector(false);
+    setShowTrackConfiguration(true);
     notify({
       type: "success",
       title: "Track Selected",
-      message: `${track.name} is now ready for your session`,
+      message: `${track.name} selected. Review track configuration before starting your session.`,
     });
   };
 
@@ -409,8 +426,124 @@ const ModeSelection: React.FC = () => {
           </Card>
         )}
 
+        {/* Track Configuration View */}
+        {showTrackConfiguration && selectedTrack && (
+          <Card className="bg-gray-800 border-gray-700 mb-8">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-6 w-6 text-blue-400" />
+                  Track Configuration
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBackToTrackSelection}
+                  className="text-gray-400 border-gray-600"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Back
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Track Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-white">{selectedTrack.name}</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Location:</span>
+                      <span className="text-white">{selectedTrack.city}, {selectedTrack.country}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Length:</span>
+                      <span className="text-white">
+                        {selectedTrack.length ? `${(selectedTrack.length / 1000).toFixed(2)} km` : `${selectedTrack.length} km`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Type:</span>
+                      <span className="text-white">{selectedTrack.type || "Circuit"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Surface:</span>
+                      <span className="text-white">{selectedTrack.surface || "Asphalt"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Direction:</span>
+                      <span className="text-white">{selectedTrack.direction || "Clockwise"}</span>
+                    </div>
+                    {selectedTrack.sectors && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Sectors:</span>
+                        <span className="text-white">{selectedTrack.sectors.length}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Track Analysis */}
+                <div className="space-y-4">
+                  <h4 className="text-md font-semibold text-white">Track Analysis</h4>
+                  <div className="space-y-3">
+                    <div className="bg-gray-700/50 rounded-lg p-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm text-gray-400">Track Difficulty</span>
+                        <span className="text-yellow-400 font-medium">Medium</span>
+                      </div>
+                      <div className="w-full bg-gray-600 rounded-full h-2">
+                        <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '60%' }}></div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-700/50 rounded-lg p-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm text-gray-400">Technical Sections</span>
+                        <span className="text-blue-400 font-medium">3</span>
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        High-speed corners, chicanes, and elevation changes
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-700/50 rounded-lg p-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm text-gray-400">Overtaking Opportunities</span>
+                        <span className="text-green-400 font-medium">Good</span>
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        Multiple braking zones and long straights
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-gray-700">
+                <Button
+                  onClick={handleStartSession}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600"
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  Start Session
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowTrackSelector(true)}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Change Track
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Selected Track Display */}
-        {selectedTrack && !showTrackSelector && (
+        {selectedTrack && !showTrackSelector && !showTrackConfiguration && (
           <Card className="bg-gray-800 border-gray-700 mb-8">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
