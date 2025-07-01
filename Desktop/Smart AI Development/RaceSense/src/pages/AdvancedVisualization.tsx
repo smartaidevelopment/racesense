@@ -671,6 +671,8 @@ const AdvancedVisualization: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     <select
+                      id="heatmap-type-select"
+                      name="heatmapType"
                       value={selectedHeatMapType}
                       onChange={(e) => handleHeatMapTypeChange(e.target.value)}
                       className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
@@ -740,7 +742,7 @@ const AdvancedVisualization: React.FC = () => {
                       <label className="text-xs text-muted-foreground mb-2 block">
                         Quality
                       </label>
-                      <select className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm">
+                      <select className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm" id="visualization-quality-select" name="visualizationQuality">
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
                         <option value="high">High</option>
