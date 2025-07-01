@@ -69,13 +69,9 @@ const AdvancedAIPage: React.FC = () => {
   const [optimizationProgress, setOptimizationProgress] = useState(0);
 
   useEffect(() => {
-    loadExistingData();
+    // Optionally, fetch initial data from backend if endpoints exist
+    // Otherwise, leave empty to only show results after user actions
   }, []);
-
-  const loadExistingData = () => {
-    setOptimizations(advancedAIService.getAllOptimizations());
-    setPredictions(advancedAIService.getAllPredictions());
-  };
 
   const startMLOptimization = async (
     trackId: string,
@@ -83,27 +79,10 @@ const AdvancedAIPage: React.FC = () => {
   ) => {
     setIsOptimizing(true);
     setOptimizationProgress(0);
-
     try {
-      // Simulate progress updates
-      const progressInterval = setInterval(() => {
-        setOptimizationProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(progressInterval);
-            return 100;
-          }
-          return prev + 2;
-        });
-      }, 100);
-
-      const optimization = await advancedAIService.optimizeTrackWithML(
-        trackId,
-        algorithm,
-        1000,
-      );
-
+      // No simulated progress, just set loading state
+      const optimization = await advancedAIService.optimizeTrackWithML(trackId, algorithm, 1000);
       setOptimizations((prev) => [optimization, ...prev]);
-      clearInterval(progressInterval);
       setOptimizationProgress(100);
     } catch (error) {
       console.error("ML optimization failed:", error);
@@ -126,7 +105,6 @@ const AdvancedAIPage: React.FC = () => {
           rainProbability: 15,
         },
       );
-
       setSetupPredictions((prev) => [prediction, ...prev]);
     } catch (error) {
       console.error("Setup prediction failed:", error);
@@ -175,8 +153,7 @@ const AdvancedAIPage: React.FC = () => {
 
   const generateCoachingRecommendations = async () => {
     try {
-      const newRecommendations =
-        await advancedAIService.generateCoachingRecommendations("session-123");
+      const newRecommendations = await advancedAIService.generateCoachingRecommendations("session-123");
       setRecommendations(newRecommendations);
     } catch (error) {
       console.error("Coaching recommendations failed:", error);
