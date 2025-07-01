@@ -438,7 +438,18 @@ class DataManagementService {
   }
 
   private loadDemoData(): void {
-    // Create some demo sessions
+    console.log("=== Loading demo data ===");
+    
+    // Check if we should skip demo data loading
+    const hasSampleData = localStorage.getItem("racesense-has-sample-data");
+    if (hasSampleData) {
+      console.log("Sample data flag found, skipping demo data loading to avoid conflicts");
+      return;
+    }
+    
+    console.log("Creating demo sessions with basic telemetry data...");
+    
+    // Create some demo sessions with basic telemetry data
     const demoSessions: Omit<SessionData, "id">[] = [
       {
         name: "Morning Practice",
@@ -449,40 +460,11 @@ class DataManagementService {
         bestLapTime: 83250, // 1:23.250
         totalLaps: 15,
         notes: "Good session, worked on setup balance",
+        telemetryData: this.generateBasicTelemetryData(1800), // Add basic telemetry
         metadata: {
           weather: "Clear",
           temperature: 22,
           trackCondition: "Dry",
-        },
-      },
-      {
-        name: "Qualifying Simulation",
-        track: "Spa-Francorchamps",
-        type: "qualifying",
-        date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-        duration: 900, // 15 minutes
-        bestLapTime: 145750, // 2:25.750
-        totalLaps: 8,
-        notes: "Focus on qualifying pace, managed traffic well",
-        metadata: {
-          weather: "Partly Cloudy",
-          temperature: 18,
-          trackCondition: "Dry",
-        },
-      },
-      {
-        name: "Race Simulation",
-        track: "Nürburgring GP",
-        type: "race",
-        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 1 week ago
-        duration: 2700, // 45 minutes
-        bestLapTime: 95500, // 1:35.500
-        totalLaps: 25,
-        notes: "Long stint practice, tire degradation analysis",
-        metadata: {
-          weather: "Overcast",
-          temperature: 16,
-          trackCondition: "Slightly Damp",
         },
       },
       {
@@ -494,32 +476,61 @@ class DataManagementService {
         bestLapTime: 84100, // 1:24.100
         totalLaps: 35,
         notes: "Testing aerodynamic package, positive results",
+        telemetryData: this.generateBasicTelemetryData(3600), // Add basic telemetry
         metadata: {
           weather: "Clear",
           temperature: 25,
           trackCondition: "Dry",
         },
       },
-      {
-        name: "Wet Weather Practice",
-        track: "Monaco",
-        type: "practice",
-        date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000), // 2 weeks ago
-        duration: 1200, // 20 minutes
-        bestLapTime: 85750, // 1:25.750
-        totalLaps: 12,
-        notes: "Wet weather setup work, good progress",
-        metadata: {
-          weather: "Rain",
-          temperature: 14,
-          trackCondition: "Wet",
-        },
-      },
     ];
 
     demoSessions.forEach((session) => {
+      console.log(`Creating demo session: ${session.name} with ${session.telemetryData?.length || 0} telemetry points`);
       this.addSession(session);
     });
+    
+    console.log("Demo data loading complete");
+  }
+
+  // Generate basic telemetry data for demo sessions
+  private generateBasicTelemetryData(durationSeconds: number): TelemetryPoint[] {
+    const telemetryData: TelemetryPoint[] = [];
+    const interval = 100; // 100ms intervals
+    const totalPoints = Math.floor(durationSeconds * 1000 / interval);
+    const startTime = Date.now() - (durationSeconds * 1000);
+    
+    console.log(`Generating ${totalPoints} basic telemetry points for ${durationSeconds}s session`);
+    
+    for (let i = 0; i < totalPoints; i++) {
+      const timestamp = startTime + (i * interval);
+      telemetryData.push({
+        timestamp,
+        position: {
+          lat: 52.0736 + (i * 0.0001), // Moving north
+          lng: -1.0169 + (i * 0.0001), // Moving east
+        },
+        speed: 100 + (Math.random() * 50), // 100-150 km/h
+        rpm: 3000 + (Math.random() * 2000),
+        throttle: 50 + (Math.random() * 50),
+        brake: Math.random() * 20,
+        gear: 3 + Math.floor(Math.random() * 3),
+        engineTemp: 85 + Math.random() * 15,
+        gForce: {
+          lateral: (Math.random() - 0.5) * 2,
+          longitudinal: (Math.random() - 0.5) * 1.5,
+          vertical: 1 + (Math.random() - 0.5) * 0.2,
+        },
+        tireTemps: {
+          frontLeft: 80 + Math.random() * 20,
+          frontRight: 80 + Math.random() * 20,
+          rearLeft: 75 + Math.random() * 20,
+          rearRight: 75 + Math.random() * 20,
+        },
+      });
+    }
+    
+    return telemetryData;
   }
 
   // File reading utilities
