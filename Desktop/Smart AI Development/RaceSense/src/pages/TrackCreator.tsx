@@ -54,6 +54,7 @@ const TrackCreator: React.FC = () => {
   const [zoom, setZoom] = useState(12);
   const [dragMode, setDragMode] = useState<"sectors" | "none">("none");
   const [isDragging, setIsDragging] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
 
   // Update sectors count ref whenever sectors change
   useEffect(() => {
@@ -75,48 +76,78 @@ const TrackCreator: React.FC = () => {
         fullscreenControl: false,
       });
       mapInstanceRef.current = map;
+      
+      // Add map event listeners
       map.addListener("zoom_changed", () => setZoom(map.getZoom() || 12));
       map.addListener("center_changed", () => {
         const c = map.getCenter();
         if (c) setMapCenter({ lat: c.lat(), lng: c.lng() });
       });
+      
+      // Add click listener for adding sectors
+      // @ts-ignore
+      const clickListener = map.addListener("click", (e: any) => {
+        console.log("Map clicked!", e); // Debug log
+        if (e.latLng) {
+          const lat = e.latLng.lat();
+          const lng = e.latLng.lng();
+          const currentSectorsCount = sectorsCountRef.current;
+          console.log("Adding sector at:", lat, lng, "count:", currentSectorsCount); // Debug log
+          const newPoint: SectorPoint = {
+            id: Date.now().toString(),
+            lat,
+            lng,
+            name: `Sector Point ${currentSectorsCount * 2 + 1}`,
+          };
+          const newSector = {
+            id: currentSectorsCount + 1,
+            name: `Sector ${currentSectorsCount + 1}`,
+            startPoint: newPoint,
+            endPoint: { ...newPoint, id: (Date.now() + 1).toString() },
+            length: 0,
+          };
+          setTrack(prev => ({ ...prev, sectors: [...prev.sectors, newSector] }));
+          notify({ type: "success", title: "Sector Added", message: `Added sector at ${lat.toFixed(6)}, ${lng.toFixed(6)}` });
+        }
+      });
+      
+      setMapReady(true);
+      console.log("Map loaded and click listener attached"); // Debug log
+    }).catch((error) => {
+      console.error("Failed to load Google Maps:", error);
     });
-    return () => { mapInstanceRef.current = null; };
+    
+    return () => { 
+      mapInstanceRef.current = null; 
+      setMapReady(false);
+    };
   }, []);
 
-  // Map click: add sector
-  useEffect(() => {
+  // Test function to add sector at map center
+  const addSectorAtCenter = () => {
     if (!mapInstanceRef.current) return;
-    // @ts-ignore
-    const clickListener = mapInstanceRef.current.addListener("click", (e: any) => {
-      if (e.latLng) {
-        const lat = e.latLng.lat();
-        const lng = e.latLng.lng();
-        const currentSectorsCount = sectorsCountRef.current;
-        const newPoint: SectorPoint = {
-          id: Date.now().toString(),
-          lat,
-          lng,
-          name: `Sector Point ${currentSectorsCount * 2 + 1}`,
-        };
-        const newSector = {
-          id: currentSectorsCount + 1,
-          name: `Sector ${currentSectorsCount + 1}`,
-          startPoint: newPoint,
-          endPoint: { ...newPoint, id: (Date.now() + 1).toString() },
-          length: 0,
-        };
-        setTrack(prev => ({ ...prev, sectors: [...prev.sectors, newSector] }));
-        notify({ type: "success", title: "Sector Added", message: `Added sector at ${lat.toFixed(6)}, ${lng.toFixed(6)}` });
-      }
-    });
-    return () => {
-      if (mapInstanceRef.current) {
-        // @ts-ignore
-        window.google.maps.event.removeListener(clickListener);
-      }
-    };
-  }, []); // Remove dependency on track.sectors.length
+    const center = mapInstanceRef.current.getCenter();
+    if (center) {
+      const lat = center.lat();
+      const lng = center.lng();
+      const currentSectorsCount = sectorsCountRef.current;
+      const newPoint: SectorPoint = {
+        id: Date.now().toString(),
+        lat,
+        lng,
+        name: `Sector Point ${currentSectorsCount * 2 + 1}`,
+      };
+      const newSector = {
+        id: currentSectorsCount + 1,
+        name: `Sector ${currentSectorsCount + 1}`,
+        startPoint: newPoint,
+        endPoint: { ...newPoint, id: (Date.now() + 1).toString() },
+        length: 0,
+      };
+      setTrack(prev => ({ ...prev, sectors: [...prev.sectors, newSector] }));
+      notify({ type: "success", title: "Sector Added", message: `Added sector at center: ${lat.toFixed(6)}, ${lng.toFixed(6)}` });
+    }
+  };
 
   // Update sector markers
   useEffect(() => {
@@ -297,6 +328,17 @@ const TrackCreator: React.FC = () => {
                     >
                       <Timer className="h-3 w-3 sm:h-4 sm:w-4" />
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={addSectorAtCenter}
+                      className="border-green-600/50 text-green-400 hover:bg-green-400/10 transition-all duration-200"
+                      title="Test: Add Sector at Center"
+                      disabled={!mapReady}
+                    >
+                      <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Test Add</span>
+                    </Button>
                   </div>
                 </CardTitle>
               </CardHeader>
@@ -309,10 +351,20 @@ const TrackCreator: React.FC = () => {
                 {track.sectors.length === 0 && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="bg-black/70 backdrop-blur-sm rounded-lg p-4 text-center max-w-sm mx-4">
-                      <div className="text-yellow-400 text-lg font-semibold mb-2">Click to Add Sectors</div>
-                      <div className="text-gray-300 text-sm">
-                        Click anywhere on the map to create your first sector
+                      <div className="text-yellow-400 text-lg font-semibold mb-2">
+                        {mapReady ? "Click to Add Sectors" : "Loading Map..."}
                       </div>
+                      <div className="text-gray-300 text-sm">
+                        {mapReady 
+                          ? "Click anywhere on the map to create your first sector"
+                          : "Please wait while the map loads..."
+                        }
+                      </div>
+                      {mapReady && (
+                        <div className="mt-3 text-xs text-green-400">
+                          ✓ Map ready - Click to add sectors
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
