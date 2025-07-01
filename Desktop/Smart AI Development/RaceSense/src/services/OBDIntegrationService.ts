@@ -95,10 +95,12 @@ class OBDIntegrationService {
 
   // List of common OBD-II BLE service/characteristic UUID pairs
   private static COMMON_OBD_UUIDS = [
+    // RaceBox Mini BLE
+    { service: "49991f50-b865-0fb3-3b31-32f9447aca67", characteristic: "6e400001-b5a3-f393-e0a9-e50e24dcca9e" },
+    // Generic BLE UART/OBD
     { service: "0000fff0-0000-1000-8000-00805f9b34fb", characteristic: "0000fff2-0000-1000-8000-00805f9b34fb" },
     { service: "0000ffe0-0000-1000-8000-00805f9b34fb", characteristic: "0000ffe1-0000-1000-8000-00805f9b34fb" },
     { service: "6e400001-b5a3-f393-e0a9-e50e24dcca9e", characteristic: "6e400003-b5a3-f393-e0a9-e50e24dcca9e" }, // Nordic UART
-    { service: "1101", characteristic: "1101" },
   ];
 
   constructor() {
